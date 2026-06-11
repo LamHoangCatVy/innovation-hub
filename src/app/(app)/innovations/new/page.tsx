@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@/lib/user-context";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { InnovationInputForm } from "@/components/innovations/input-form";
 import { ClassificationPanel } from "@/components/innovations/classification-panel";
 import { Button } from "@/components/ui/button";
@@ -139,7 +138,7 @@ function NewInnovationContent() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-text-primary">Đề xuất Sáng kiến mới</h1>
@@ -312,7 +311,7 @@ function NewInnovationContent() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

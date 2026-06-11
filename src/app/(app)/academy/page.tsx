@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -56,7 +55,7 @@ const RESOURCES = [
 
 export default function AcademyPage() {
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-5xl mx-auto space-y-10">
         <div>
           <div className="flex items-center gap-2 mb-2">
@@ -140,6 +139,6 @@ export default function AcademyPage() {
           </Link>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

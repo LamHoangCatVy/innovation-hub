@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,7 +68,7 @@ export default function AdminInnovationsPage() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Quản lý Sáng kiến</h1>
@@ -137,6 +136,6 @@ export default function AdminInnovationsPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

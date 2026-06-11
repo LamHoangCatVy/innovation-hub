@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,22 +109,22 @@ export default function AdminDashboardPage() {
 
   if (user.role !== "ADMIN") {
     return (
-      <DashboardLayout>
+      <>
         <div className="text-center py-20">
           <Shield size={64} className="mx-auto text-text-muted mb-4" />
           <h1 className="text-2xl font-bold text-text-primary">Quyền truy cập bị giới hạn</h1>
           <p className="text-text-secondary mt-2">Dashboard chỉ dành cho Admin. Vui lòng chuyển sang role Admin ở header.</p>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
-  if (loading) return <DashboardLayout><div className="flex justify-center py-12"><Spinner size={32} /></div></DashboardLayout>;
+  if (loading) return <><div className="flex justify-center py-12"><Spinner size={32} /></div></>;
 
   const s = stats!;
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
@@ -277,6 +276,6 @@ export default function AdminDashboardPage() {
           </div>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

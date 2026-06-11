@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,7 @@ export default function ReviewPage() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-5xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Phê duyệt Sáng kiến (PIC)</h1>
@@ -156,6 +155,6 @@ export default function ReviewPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

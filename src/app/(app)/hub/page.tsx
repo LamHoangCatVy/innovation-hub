@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -67,7 +66,7 @@ export default function HubPage() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Nhà Chung</h1>
@@ -168,6 +167,6 @@ export default function HubPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

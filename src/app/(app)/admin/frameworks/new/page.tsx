@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,7 +75,7 @@ export default function NewFrameworkPage() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/admin/frameworks">
@@ -181,6 +180,6 @@ export default function NewFrameworkPage() {
           </div>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

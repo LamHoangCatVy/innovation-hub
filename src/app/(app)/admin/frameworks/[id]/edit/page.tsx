@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,10 +77,10 @@ export default function EditFrameworkPage() {
     }
   };
 
-  if (loading) return <DashboardLayout><div className="flex justify-center py-12"><Spinner size={32} /></div></DashboardLayout>;
+  if (loading) return <><div className="flex justify-center py-12"><Spinner size={32} /></div></>;
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/admin/frameworks"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
@@ -159,6 +158,6 @@ export default function EditFrameworkPage() {
           </div>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,11 +84,11 @@ export default function ReviewDetailPage() {
     }
   };
 
-  if (loading) return <DashboardLayout><div className="flex justify-center py-12"><Spinner size={32} /></div></DashboardLayout>;
-  if (!data) return <DashboardLayout><Card className="text-center py-12"><p className="text-text-secondary">Không tìm thấy</p></Card></DashboardLayout>;
+  if (loading) return <><div className="flex justify-center py-12"><Spinner size={32} /></div></>;
+  if (!data) return <><Card className="text-center py-12"><p className="text-text-secondary">Không tìm thấy</p></Card></>;
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/review"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
@@ -201,6 +200,6 @@ export default function ReviewDetailPage() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

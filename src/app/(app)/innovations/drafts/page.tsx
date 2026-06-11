@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -40,7 +39,7 @@ export default function DraftsPage() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Bản nháp của tôi</h1>
@@ -91,6 +90,6 @@ export default function DraftsPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

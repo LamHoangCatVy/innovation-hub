@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,8 +66,8 @@ export default function InnovationDetailPage() {
     }
   };
 
-  if (loading) return <DashboardLayout><div className="flex justify-center py-12"><Spinner size={32} /></div></DashboardLayout>;
-  if (!data) return <DashboardLayout><Card className="text-center py-12"><p className="text-text-secondary">Không tìm thấy sáng kiến</p></Card></DashboardLayout>;
+  if (loading) return <><div className="flex justify-center py-12"><Spinner size={32} /></div></>;
+  if (!data) return <><Card className="text-center py-12"><p className="text-text-secondary">Không tìm thấy sáng kiến</p></Card></>;
 
   const statusMap: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger" | "info" }> = {
     DRAFT: { label: "Nháp", variant: "default" },
@@ -88,7 +87,7 @@ export default function InnovationDetailPage() {
   const haveReviewFeedback = data.reviews?.some((r) => r.feedbackNotes);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
@@ -228,6 +227,6 @@ export default function InnovationDetailPage() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
