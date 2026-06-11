@@ -84,72 +84,7 @@ function Core() {
   );
 }
 
-function Beam({
-  color,
-  opacity,
-  radius,
-  y,
-  pulseOffset,
-  reducedMotion,
-}: {
-  color: string;
-  opacity: number;
-  radius: number;
-  y: number;
-  pulseOffset: number;
-  reducedMotion: boolean;
-}) {
-  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
-  const signalRef = useRef<THREE.Mesh>(null);
 
-  const { midpoint, quaternion, length } = useMemo(() => {
-    const end = new THREE.Vector3(radius, y, 0);
-    const direction = end.clone().normalize();
-    const quaternionValue = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      direction
-    );
-
-    return {
-      midpoint: [radius / 2, y / 2, 0] as [number, number, number],
-      quaternion: quaternionValue,
-      length: end.length(),
-    };
-  }, [radius, y]);
-
-  useFrame(({ clock }) => {
-    if (materialRef.current) {
-      const pulse = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 2.2 + pulseOffset) * 0.08;
-      materialRef.current.opacity = opacity + pulse;
-    }
-
-    if (!signalRef.current) return;
-    if (reducedMotion) {
-      signalRef.current.visible = false;
-      return;
-    }
-
-    signalRef.current.visible = true;
-    const progress = (clock.elapsedTime * 0.22 + pulseOffset) % 1;
-    const distance = radius * (1 - progress);
-    signalRef.current.position.set(distance, y * (1 - progress), 0);
-    const scale = 0.7 + Math.sin(progress * Math.PI) * 0.6;
-    signalRef.current.scale.setScalar(scale);
-  });
-
-  return (
-    <>
-      <mesh position={midpoint} quaternion={quaternion}>
-        <cylinderGeometry args={[0.01, 0.01, length, 6, 1, true]} />
-        <meshBasicMaterial ref={materialRef} color={color} transparent opacity={opacity} depthWrite={false} />
-      </mesh>
-      <mesh ref={signalRef} position={[radius, y, 0]}>
-        <sphereGeometry args={[0.055, 12, 12]} />
-        <meshBasicMaterial color={color} transparent opacity={0.72} />
-      </mesh>
-    </>
-  );
-}
 
 function DepartmentNode({
   block,
@@ -199,14 +134,7 @@ function DepartmentNode({
 
   return (
     <group ref={groupRef} rotation={[0, angle, 0]}>
-      <Beam
-        color={beamColor}
-        opacity={isBusiness ? 0.12 : 0.15}
-        radius={radius}
-        y={y}
-        pulseOffset={index * 0.17}
-        reducedMotion={reducedMotion}
-      />
+
       <mesh
         ref={nodeRef}
         position={[radius, y, 0]}
