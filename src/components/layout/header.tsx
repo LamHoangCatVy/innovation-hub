@@ -1,9 +1,12 @@
 "use client";
 
-import { Bell, Search, Compass } from "lucide-react";
+import { Bell, Search, Compass, LogOut } from "lucide-react";
 import { UserSwitcher } from "./user-switcher";
+import { useUser } from "@/lib/user-context";
 
 export function Header() {
+  const { logout } = useUser();
+
   return (
     <header className="sticky top-0 z-30 h-16 bg-surface/80 backdrop-blur-md border-b border-border px-6 flex items-center justify-between">
       <div className="flex items-center gap-4 flex-1 max-w-xl">
@@ -34,6 +37,14 @@ export function Header() {
 
         <button className="relative p-2 rounded-lg hover:bg-surface-alt text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
           <Bell size={18} />
+        </button>
+
+        <button
+          onClick={() => logout()}
+          title="Đăng xuất"
+          className="p-2 rounded-lg hover:bg-surface-alt text-text-secondary hover:text-red-500 transition-colors cursor-pointer"
+        >
+          <LogOut size={18} />
         </button>
       </div>
     </header>

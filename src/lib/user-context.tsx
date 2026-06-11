@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface UserIdentity {
   id: string;
@@ -11,6 +12,8 @@ export interface UserIdentity {
   blockName: string;
 }
 
+// Static directory used for the admin impersonation dropdown and for resolving a
+// friendly block name from the (server-trusted) blockCode returned by /api/auth/me.
 export const ALL_USERS: UserIdentity[] = [
   { id: "admin-001", username: "admin", fullName: "Admin User", role: "ADMIN", blockCode: "Strategy", blockName: "Ban Chiến lược" },
   { id: "staff-vylhc", username: "vylhc", fullName: "Vũ Yến Ly", role: "STAFF", blockCode: "RB", blockName: "Khối Bán lẻ" },
@@ -27,19 +30,53 @@ export const ALL_USERS: UserIdentity[] = [
   { id: "staff-trangpt", username: "trangpt", fullName: "Phạm Thu Trang", role: "STAFF", blockCode: "Strategy", blockName: "Khối Chiến lược" },
 ];
 
-const DEFAULT_USER = ALL_USERS[0];
+// Guest placeholder used before hydration and on public pages rendered outside the
+// provider (e.g. the landing page). role STAFF keeps admin-only UI hidden.
+const GUEST_USER: UserIdentity = {
+  id: "", username: "", fullName: "Khách", role: "STAFF", blockCode: "", blockName: "",
+};
+
+interface ServerUser {
+  userId: string;
+  username: string;
+  fullName: string;
+  role: "ADMIN" | "STAFF";
+  blockCode: string;
+}
+
+function toIdentity(u: ServerUser): UserIdentity {
+  const known = ALL_USERS.find((x) => x.id === u.userId);
+  const blockName =
+    known?.blockName ??
+    ALL_USERS.find((x) => x.blockCode === u.blockCode)?.blockName ??
+    u.blockCode;
+  return {
+    id: u.userId,
+    username: u.username,
+    fullName: u.fullName,
+    role: u.role,
+    blockCode: u.blockCode,
+    blockName,
+  };
+}
 
 interface UserContextType {
   user: UserIdentity;
-  setUser: (u: UserIdentity) => void;
-  switchUser: (id: string) => void;
+  loading: boolean;
+  isImpersonating: boolean;
+  switchUser: (id: string) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
+  logout: () => Promise<void>;
   allUsers: UserIdentity[];
 }
 
 const UserContext = createContext<UserContextType>({
-  user: DEFAULT_USER,
-  setUser: () => {},
-  switchUser: () => {},
+  user: GUEST_USER,
+  loading: true,
+  isImpersonating: false,
+  switchUser: async () => {},
+  stopImpersonation: async () => {},
+  logout: async () => {},
   allUsers: ALL_USERS,
 });
 
@@ -48,32 +85,68 @@ export function useUser() {
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserIdentity>(DEFAULT_USER);
+  const [user, setUser] = useState<UserIdentity>(GUEST_USER);
+  const [loading, setLoading] = useState(true);
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("vpb_user_id");
-      if (saved) {
-        const found = ALL_USERS.find((u) => u.id === saved);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (found) setUser(found);
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) {
+          window.location.href = "/login";
+          return;
+        }
+        const data = await res.json();
+        if (!active) return;
+        setUser(toIdentity(data.user));
+        setIsImpersonating(Boolean(data.impersonating));
+      } catch {
+        window.location.href = "/login";
+      } finally {
+        if (active) setLoading(false);
       }
-    } catch {}
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const persist = useCallback((u: UserIdentity) => {
-    setUser(u);
-    try { localStorage.setItem("vpb_user_id", u.id); } catch {}
+  const switchUser = useCallback(async (id: string) => {
+    const res = await fetch("/api/auth/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id }),
+    });
+    if (res.ok) window.location.reload();
   }, []);
 
-  const switchUser = useCallback((id: string) => {
-    const found = ALL_USERS.find((u) => u.id === id);
-    if (found) persist(found);
-  }, [persist]);
+  const stopImpersonation = useCallback(async () => {
+    const res = await fetch("/api/auth/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: null }),
+    });
+    if (res.ok) window.location.reload();
+  }, []);
+
+  const logout = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  }, []);
 
   return (
-    <UserContext.Provider value={{ user, setUser: persist, switchUser, allUsers: ALL_USERS }}>
-      {children}
+    <UserContext.Provider
+      value={{ user, loading, isImpersonating, switchUser, stopImpersonation, logout, allUsers: ALL_USERS }}
+    >
+      {loading ? (
+        <div className="flex h-screen w-full items-center justify-center">
+          <Spinner size={28} />
+        </div>
+      ) : (
+        children
+      )}
     </UserContext.Provider>
   );
 }

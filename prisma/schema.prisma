@@ -29,6 +29,7 @@ model User {
   username  String   @unique
   email     String   @unique
   fullName  String
+  passwordHash String?
   blockId   String?
   role      String   @default("STAFF")
   avatarUrl String?

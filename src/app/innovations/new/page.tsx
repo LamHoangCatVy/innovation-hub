@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@/lib/user-context";
@@ -20,7 +20,7 @@ const STEPS = [
   { id: 4, label: "Kết quả AI" },
 ];
 
-export default function NewInnovationPage() {
+function NewInnovationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -313,5 +313,13 @@ export default function NewInnovationPage() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function NewInnovationPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewInnovationContent />
+    </Suspense>
   );
 }
