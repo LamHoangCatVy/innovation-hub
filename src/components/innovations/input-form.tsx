@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,17 +16,44 @@ interface FormData {
 interface InnovationInputFormProps {
   onDataChange: (data: FormData) => void;
   initialData?: Partial<FormData>;
+  autoSaveEndpoint?: string;
+  autoSavePayload?: Record<string, unknown>;
+  autoSaveEnabled?: boolean;
 }
 
-export function InnovationInputForm({ onDataChange, initialData }: InnovationInputFormProps) {
+function buildInitialForm(initialData?: Partial<FormData>): FormData {
+  return {
+    title: initialData?.title || "",
+    executiveSummary: initialData?.executiveSummary || "",
+    painPoints: initialData?.painPoints || "",
+    detailedSolution: initialData?.detailedSolution || "",
+  };
+}
+
+export function InnovationInputForm({
+  onDataChange,
+  initialData,
+  autoSaveEndpoint = "/api/innovations/drafts",
+  autoSavePayload,
+  autoSaveEnabled = true,
+}: InnovationInputFormProps) {
   const [form, setForm] = useState<FormData>({
     title: initialData?.title || "",
     executiveSummary: initialData?.executiveSummary || "",
     painPoints: initialData?.painPoints || "",
     detailedSolution: initialData?.detailedSolution || "",
   });
+  const autoSaveData = useMemo(
+    () => ({ ...form, ...(autoSavePayload ?? {}) }),
+    [autoSavePayload, form]
+  );
 
-  const { saveStatus, lastSavedAt } = useAutoSave(form, "/api/innovations/drafts");
+  const { saveStatus, lastSavedAt } = useAutoSave(autoSaveData, autoSaveEndpoint, 30000, autoSaveEnabled);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm(buildInitialForm(initialData));
+  }, [initialData]);
 
   useEffect(() => {
     onDataChange(form);

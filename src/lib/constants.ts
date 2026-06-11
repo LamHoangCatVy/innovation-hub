@@ -61,3 +61,5 @@ export const INNOVATION_STATUS_TRANSITIONS: Record<string, string[]> = {
   PUBLISHED: ["COMPLETED"],
   COMPLETED: [],
 };
+
+export const SCREENING_PASS_THRESHOLD = 40;

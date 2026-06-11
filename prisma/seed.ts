@@ -1,10 +1,17 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { BANK_BLOCKS, FRAMEWORK_BUSINESS_RICE, FRAMEWORK_OPERATIONAL_RISK } from "../src/lib/constants";
+import { seedMockInnovations } from "./mock-innovation-data";
 
 const prisma = new PrismaClient();
 
+// Shared default password for all seeded accounts (prototype only).
+const DEFAULT_PASSWORD = "Innovation@2026";
+
 async function main() {
   console.log("Seeding VPB Innovation Platform...");
+
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
   await prisma.innovationUpvote.deleteMany();
   await prisma.innovationComment.deleteMany();
@@ -22,6 +29,12 @@ async function main() {
   await prisma.block.deleteMany();
   await prisma.user.deleteMany();
 
+  // Blocks must exist before users so staff can be linked to their block.
+  for (const blockData of BANK_BLOCKS) {
+    await prisma.block.create({ data: blockData });
+  }
+  console.log("20 blocks created");
+
   await prisma.user.create({
     data: {
       id: "admin-001",
@@ -30,6 +43,7 @@ async function main() {
       fullName: "Admin User",
       role: "ADMIN",
       blockId: null,
+      passwordHash,
     },
   });
 
@@ -58,16 +72,13 @@ async function main() {
         fullName: staff.fullName,
         role: "STAFF",
         blockId: block?.id || null,
+        passwordHash,
       },
     });
   }
 
   console.log("13 users created (1 admin + 12 staff)");
-
-  for (const blockData of BANK_BLOCKS) {
-    await prisma.block.create({ data: blockData });
-  }
-  console.log("20 blocks created");
+  console.log(`Default password for all accounts: ${DEFAULT_PASSWORD}`);
 
   const frameworkBusiness = await prisma.framework.create({
     data: {
@@ -160,6 +171,7 @@ async function main() {
   });
 
   console.log("Sample innovation created:", sample.title);
+  await seedMockInnovations(prisma);
   console.log("Seed completed!");
 }
 

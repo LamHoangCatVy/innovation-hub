@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getUserFromHeaders } from "@/lib/auth";
+
+const PUBLIC_STATUSES = new Set(["PUBLISHED", "COMPLETED"]);
+const STAFF_EDITABLE_STATUSES = new Set(["DRAFT", "MODIFICATION_REQUESTED"]);
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  let user;
+  try {
+    user = await getUserFromHeaders();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const innovation = await prisma.innovation.findUnique({
       where: { id },
       include: {
         primaryBlock: { select: { code: true, name: true } },
         classifications: { include: { block: { select: { code: true, name: true } } } },
-        author: { select: { fullName: true, email: true } },
+        author: { select: { id: true, fullName: true, email: true } },
         screenings: { include: { scores: { include: { criterion: true } }, framework: true } },
         reviews: { include: { reviewer: { select: { fullName: true } }, block: { select: { code: true, name: true } } } },
         _count: { select: { upvotes: true, comments: true } },
@@ -20,20 +31,74 @@ export async function GET(
       },
     });
     if (!innovation) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const canView =
+      user.role === "ADMIN" ||
+      innovation.authorId === user.userId ||
+      PUBLIC_STATUSES.has(innovation.status) ||
+      innovation.reviews.some((review) => review.reviewerId === user.userId || review.block.code === user.blockCode);
+
+    if (!canView) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     return NextResponse.json(innovation);
   } catch {
     return NextResponse.json({ error: "Failed to fetch innovation" }, { status: 500 });
   }
 }
 
+// Whitelist of fields that can be updated via PUT (never status/authorId/code/version)
+const UPDATABLE_FIELDS = new Set([
+  "title",
+  "executiveSummary",
+  "painPoints",
+  "detailedSolution",
+  "primaryBlockId",
+  "isBankWide",
+]);
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  let user;
   try {
+    user = await getUserFromHeaders();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const existing = await prisma.innovation.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Only the author or an ADMIN can update
+    if (existing.authorId !== user.userId && user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (user.role !== "ADMIN" && !STAFF_EDITABLE_STATUSES.has(existing.status)) {
+      return NextResponse.json(
+        { error: `Cannot update innovation in status "${existing.status}"` },
+        { status: 409 }
+      );
+    }
+
     const body = await request.json();
-    const innovation = await prisma.innovation.update({ where: { id }, data: body });
+
+    // Only allow whitelisted fields
+    const safeData: Record<string, unknown> = {};
+    for (const key of Object.keys(body)) {
+      if (UPDATABLE_FIELDS.has(key)) {
+        safeData[key] = body[key];
+      }
+    }
+
+    const innovation = await prisma.innovation.update({ where: { id }, data: safeData });
     return NextResponse.json(innovation);
   } catch {
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
@@ -45,7 +110,31 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  let user;
   try {
+    user = await getUserFromHeaders();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const existing = await prisma.innovation.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Admins may delete from admin management. Staff may only delete unsent drafts.
+    if (existing.authorId !== user.userId && user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (user.role !== "ADMIN" && existing.status !== "DRAFT") {
+      return NextResponse.json(
+        { error: `Cannot delete innovation in status "${existing.status}"` },
+        { status: 409 }
+      );
+    }
+
     await prisma.innovation.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {

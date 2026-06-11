@@ -29,6 +29,7 @@ model User {
   username  String   @unique
   email     String   @unique
   fullName  String
+  passwordHash String?
   blockId   String?
   role      String   @default("STAFF")
   avatarUrl String?
@@ -41,6 +42,7 @@ model User {
   reviews       Review[]
   comments      InnovationComment[]
   upvotes       InnovationUpvote[]
+  notifications Notification[]
 }
 
 model Framework {
@@ -118,6 +120,7 @@ model Innovation {
   upvotes         InnovationUpvote[]
   logs            InnovationLog[]
   drafts          InnovationDraft[]
+  notifications   Notification[]
 
   @@index([authorId])
   @@index([status])
@@ -265,3 +268,27 @@ model InnovationLog {
 
   @@index([innovationId])
 }
+
+model Notification {
+  id            String   @id @default(uuid())
+  userId        String
+  type          String
+  title         String
+  body          String
+  innovationId  String?
+  read          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  innovation Innovation? @relation(fields: [innovationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([innovationId])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+

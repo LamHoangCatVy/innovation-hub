@@ -6,7 +6,8 @@ import { useUser } from "@/lib/user-context";
 export function useAutoSave<T>(
   data: T,
   endpoint: string,
-  intervalMs = 30000
+  intervalMs = 30000,
+  enabled = true
 ) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string>("");
@@ -15,6 +16,8 @@ export function useAutoSave<T>(
   const { user } = useUser();
 
   const save = useCallback(async () => {
+    if (!enabled) return;
+
     const serialized = JSON.stringify(data);
     if (serialized === previousRef.current) return;
 
@@ -24,7 +27,7 @@ export function useAutoSave<T>(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-vpb-user": JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode }),
+          "x-vpb-user": encodeURIComponent(JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode })),
         },
         body: serialized,
       });
@@ -37,9 +40,11 @@ export function useAutoSave<T>(
     } catch {
       setSaveStatus("idle");
     }
-  }, [data, endpoint, user]);
+  }, [data, endpoint, enabled, user]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     const handler = setTimeout(() => {
       save();
       timeoutRef.current = setInterval(save, intervalMs);
@@ -49,7 +54,7 @@ export function useAutoSave<T>(
       clearTimeout(handler);
       if (timeoutRef.current) clearInterval(timeoutRef.current);
     };
-  }, [save, intervalMs]);
+  }, [enabled, save, intervalMs]);
 
   return { saveStatus, lastSavedAt };
 }

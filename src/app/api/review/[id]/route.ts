@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromHeaders } from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
 
 export async function PUT(
   request: NextRequest,
@@ -35,15 +36,55 @@ export async function PUT(
       },
     });
 
+    // Fetch innovation for notification context
+    const innovation = await prisma.innovation.findUnique({
+      where: { id },
+      select: { authorId: true, title: true },
+    });
+
     if (decision === "APPROVED") {
-      await prisma.innovation.update({ where: { id }, data: { status: "APPROVED", approvedAt: new Date() } });
-      await prisma.innovationLog.create({ data: { innovationId: id, action: "APPROVED_BY_PIC", performedBy: user.userId } });
+      // Primary-block PIC or ADMIN approving = publish
+      await prisma.innovation.update({
+        where: { id },
+        data: { status: "PUBLISHED", approvedAt: new Date(), publishedAt: new Date() },
+      });
+      await prisma.innovationLog.create({
+        data: { innovationId: id, action: "APPROVED_BY_PIC", performedBy: user.userId },
+      });
+      if (innovation) {
+        await createNotification(innovation.authorId, {
+          type: "APPROVED",
+          title: "Sáng kiến đã được duyệt & công khai!",
+          body: `Sáng kiến "${innovation.title}" đã được ${user.fullName} phê duyệt và công khai trên Nhà Chung Sáng kiến.`,
+          innovationId: id,
+        });
+      }
     } else if (decision === "REJECTED") {
       await prisma.innovation.update({ where: { id }, data: { status: "REJECTED" } });
-      await prisma.innovationLog.create({ data: { innovationId: id, action: "REJECTED_BY_PIC", performedBy: user.userId } });
+      await prisma.innovationLog.create({
+        data: { innovationId: id, action: "REJECTED_BY_PIC", performedBy: user.userId },
+      });
+      if (innovation) {
+        await createNotification(innovation.authorId, {
+          type: "REJECTED",
+          title: "Sáng kiến bị từ chối",
+          body: `Sáng kiến "${innovation.title}" đã bị từ chối bởi ${user.fullName}.${feedbackNotes ? ` Lý do: ${feedbackNotes}` : ""}`,
+          innovationId: id,
+        });
+      }
     } else if (decision === "MODIFICATION_REQUESTED") {
       await prisma.innovation.update({ where: { id }, data: { status: "MODIFICATION_REQUESTED" } });
-      await prisma.innovationLog.create({ data: { innovationId: id, action: "MODIFICATION_REQUESTED", performedBy: user.userId } });
+      await prisma.innovationLog.create({
+        data: { innovationId: id, action: "MODIFICATION_REQUESTED", performedBy: user.userId },
+      });
+      if (innovation) {
+        await createNotification(innovation.authorId, {
+          type: "MODIFICATION_REQUESTED",
+          title: "Sáng kiến cần chỉnh sửa",
+          body: `PIC ${user.fullName} yêu cầu chỉnh sửa sáng kiến "${innovation.title}".${feedbackNotes ? ` Ghi chú: ${feedbackNotes}` : ""}`,
+          innovationId: id,
+        });
+      }
     }
 
     return NextResponse.json(updated);

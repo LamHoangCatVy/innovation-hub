@@ -26,10 +26,10 @@ import { useUser } from "@/lib/user-context";
   }
 
   const NAV_ITEMS: NAV_ITEM[] = [
-  { href: "/innovations/new", label: "Đề xuất mới", icon: Lightbulb, tour: "new-idea" },
-  { href: "/innovations/drafts", label: "Bản nháp của tôi", icon: FileText },
-  { href: "/academy", label: "Innovation Academy", icon: GraduationCap },
   { href: "/hub", label: "Nhà Chung", icon: Globe, tour: "hub" },
+  { href: "/innovations/new", label: "Đề xuất mới", icon: Lightbulb, tour: "new-idea" },
+  { href: "/innovations", label: "Ý tưởng của tôi", icon: FileText },
+  { href: "/academy", label: "Innovation Academy", icon: GraduationCap },
 ];
 
 const PIC_ADMIN_ITEMS: NAV_ITEM[] = [
@@ -40,7 +40,7 @@ const ADMIN_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { href: "/admin/innovations", label: "Quản lý Sáng kiến", icon: LayoutDashboard },
   { href: "/admin/frameworks", label: "Framework chấm điểm", icon: Shuffle },
-  { href: "/admin/frameworks/new", label: "Thêm Framework", icon: Settings },
+  { href: "/admin/settings", label: "Cấu hình hệ thống", icon: Settings },
 ];
 
 export function Sidebar() {
