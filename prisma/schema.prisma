@@ -285,3 +285,10 @@ model Notification {
   @@index([userId])
   @@index([innovationId])
 }
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+

@@ -1,28 +1,38 @@
-"use client";
-
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { UserSwitcher } from "@/components/layout/user-switcher";
 import { BANK_BLOCKS } from "@/lib/constants";
+import { prisma } from "@/lib/db";
 import {
   Sparkles, ArrowRight, Lightbulb, Brain, ShieldCheck, Globe,
   Zap, Award, ChevronRight, Network, Building2
 } from "lucide-react";
 
+const OrbitPlaceholder = () => (
+  <div className="relative h-[430px] overflow-hidden rounded-2xl border border-white/80 bg-white/70 shadow-2xl shadow-brand/10 sm:h-[520px] lg:h-[590px]">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_44%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_72%_24%,rgba(14,165,233,0.16),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(240,253,250,0.75))]" />
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="h-28 w-28 rounded-full border border-emerald-200 bg-gradient-to-br from-brand to-brand-light shadow-2xl shadow-brand/25" />
+    </div>
+  </div>
+);
+
 const DepartmentOrbit = dynamic(() => import("@/components/landing/department-orbit"), {
   ssr: false,
-  loading: () => (
-    <div className="relative h-[430px] overflow-hidden rounded-2xl border border-white/80 bg-white/70 shadow-2xl shadow-brand/10 sm:h-[520px] lg:h-[590px]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_44%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_72%_24%,rgba(14,165,233,0.16),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(240,253,250,0.75))]" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="h-28 w-28 rounded-full border border-emerald-200 bg-gradient-to-br from-brand to-brand-light shadow-2xl shadow-brand/25" />
-      </div>
-    </div>
-  ),
+  loading: OrbitPlaceholder,
 });
 
-export default function LandingPage() {
+const SupernovaOrbit = dynamic(() => import("@/components/landing/supernova-orbit"), {
+  ssr: false,
+  loading: OrbitPlaceholder,
+});
+
+export default async function LandingPage() {
+  const setting = await prisma.systemSetting.findUnique({
+    where: { key: "LANDING_ANIMATION" }
+  });
+  const isSupernova = setting?.value === "SUPERNOVA";
   const workflow = [
     { step: 1, icon: Lightbulb, title: "Đề xuất", desc: "Nhân viên từ bất kỳ khối nào gửi sáng kiến qua form chuẩn hóa, có auto-save để không mất ý tưởng." },
     { step: 2, icon: Brain, title: "AI Chấm điểm", desc: "AI phân tích nội dung và chấm điểm theo framework phù hợp với khối kinh doanh hoặc vận hành." },
@@ -96,7 +106,7 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <DepartmentOrbit />
+          {isSupernova ? <SupernovaOrbit /> : <DepartmentOrbit />}
         </div>
       </section>
 
