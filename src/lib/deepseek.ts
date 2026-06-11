@@ -17,6 +17,11 @@ interface InnovationData {
   isBankWide: boolean;
 }
 
+export interface LLMScreeningResult {
+  result: ScreeningResult;
+  usage: { promptTokens: number; completionTokens: number };
+}
+
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
 function buildScoringPrompt(innovation: InnovationData, framework: FrameworkData): string {
@@ -62,7 +67,7 @@ export async function runLLMScreening(
   innovation: InnovationData,
   framework: FrameworkData,
   apiKey: string
-): Promise<ScreeningResult> {
+): Promise<LLMScreeningResult> {
   const prompt = buildScoringPrompt(innovation, framework);
 
   const response = await fetch(DEEPSEEK_API_URL, {
@@ -72,11 +77,12 @@ export async function runLLMScreening(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "deepseek-v4-pro",
+      model: "deepseek-chat",
       messages: [
         { role: "system", content: "Bạn là chuyên gia thẩm định sáng kiến ngân hàng. Chỉ trả về JSON hợp lệ, không kèm text khác." },
         { role: "user", content: prompt },
       ],
+      response_format: { type: "json_object" },
       stream: false,
     }),
   });
@@ -89,10 +95,15 @@ export async function runLLMScreening(
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error("No content in DeepSeek response");
 
+  const usage = {
+    promptTokens: data.usage?.prompt_tokens ?? 0,
+    completionTokens: data.usage?.completion_tokens ?? 0,
+  };
+
   try {
     const result: ScreeningResult = JSON.parse(content);
     result.final_normalised_score = Math.min(100, Math.max(0, result.final_normalised_score));
-    return result;
+    return { result, usage };
   } catch {
     throw new Error("Failed to parse LLM JSON response");
   }

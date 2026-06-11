@@ -1,7 +1,8 @@
 "use client";
 
-import { Bell, Search, Compass, LogOut } from "lucide-react";
+import { Search, Compass, LogOut } from "lucide-react";
 import { UserSwitcher } from "./user-switcher";
+import { NotificationBell } from "./notification-bell";
 import { useUser } from "@/lib/user-context";
 
 export function Header() {
@@ -35,9 +36,7 @@ export function Header() {
           <Compass size={14} /> Tour
         </button>
 
-        <button className="relative p-2 rounded-lg hover:bg-surface-alt text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
-          <Bell size={18} />
-        </button>
+        <NotificationBell />
 
         <button
           onClick={() => logout()}
