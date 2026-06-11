@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@/lib/user-context";
@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { ChevronRight, ChevronLeft, Send, Save, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { BANK_BLOCKS } from "@/lib/constants";
 
 const STEPS = [
   { id: 1, label: "Nhập thông tin" },
@@ -19,19 +20,59 @@ const STEPS = [
   { id: 4, label: "Kết quả AI" },
 ];
 
+interface FormData {
+  title: string;
+  executiveSummary: string;
+  painPoints: string;
+  detailedSolution: string;
+}
+
+interface InnovationLog {
+  action: string;
+  payload: string | null;
+}
+
+interface InnovationDetailResponse {
+  id: string;
+  title?: string;
+  executiveSummary?: string;
+  painPoints?: string;
+  detailedSolution?: string | null;
+  isBankWide?: boolean;
+  status?: string;
+  primaryBlock?: { code: string } | null;
+  classifications?: { block: { code: string } }[];
+  logs?: InnovationLog[];
+  screenings?: { normalisedScore: number | null; promptTokens: number | null }[];
+}
+
+interface DraftResponse {
+  id: string;
+  title?: string | null;
+  executiveSummary?: string | null;
+  painPoints?: string | null;
+  detailedSolution?: string | null;
+  primaryBlockId?: string | null;
+  isBankWide?: boolean;
+}
+
+const EMPTY_FORM: FormData = {
+  title: "",
+  executiveSummary: "",
+  painPoints: "",
+  detailedSolution: "",
+};
+
 function NewInnovationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const draftId = searchParams.get("draft");
   const { user } = useUser();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    executiveSummary: "",
-    painPoints: "",
-    detailedSolution: "",
-  });
+  const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
+  const [initialFormData, setInitialFormData] = useState<FormData>(EMPTY_FORM);
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [primaryBlockId, setPrimaryBlockId] = useState("");
   const [isBankWide, setIsBankWide] = useState(false);
@@ -44,37 +85,99 @@ function NewInnovationContent() {
   } | null>(null);
   const [innovationId, setInnovationId] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  const [editLoading, setEditLoading] = useState(!!editId);
+  const [editLoading, setEditLoading] = useState(!!editId || !!draftId);
 
   useEffect(() => {
-    if (editId) {
+    if (!editId && !draftId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEditLoading(true);
-      fetch(`/api/innovations/${editId}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.id) {
-            setInnovationId(data.id);
-            setFormData({
-              title: data.title || "",
-              executiveSummary: data.executiveSummary || "",
-              painPoints: data.painPoints || "",
-              detailedSolution: data.detailedSolution || "",
-            });
-            const blockIds = data.classifications?.map((c: { block: { code: string } }) => c.block.code) || [];
-            setSelectedBlockIds(blockIds);
-            setPrimaryBlockId(data.primaryBlock?.code || "");
-            setIsBankWide(data.isBankWide || false);
-          }
-        })
-        .finally(() => setEditLoading(false));
+      setEditLoading(false);
+      setInitialFormData(EMPTY_FORM);
+      setFormData(EMPTY_FORM);
+      setInnovationId(null);
+      setSelectedBlockIds([]);
+      setPrimaryBlockId("");
+      setIsBankWide(false);
+      return;
     }
-  }, [editId]);
 
-  const userHeaders: Record<string, string> = {
+    let active = true;
+    setEditLoading(true);
+    setError("");
+
+    const load = async () => {
+      if (editId) {
+        const res = await fetch(`/api/innovations/${editId}`);
+        if (!res.ok) throw new Error("Cannot load innovation");
+        const data = (await res.json()) as InnovationDetailResponse;
+        if (!active) return;
+
+        const nextForm = {
+          title: data.title || "",
+          executiveSummary: data.executiveSummary || "",
+          painPoints: data.painPoints || "",
+          detailedSolution: data.detailedSolution || "",
+        };
+        setInnovationId(data.id);
+        setFormData(nextForm);
+        setInitialFormData(nextForm);
+        setSelectedBlockIds(data.classifications?.map((c) => c.block.code) || []);
+        setPrimaryBlockId(data.primaryBlock?.code || "");
+        setIsBankWide(data.isBankWide || false);
+        return;
+      }
+
+      if (draftId) {
+        const res = await fetch(`/api/innovations/drafts?id=${draftId}`);
+        if (!res.ok) throw new Error("Cannot load draft");
+        const data = (await res.json()) as DraftResponse;
+        if (!active) return;
+
+        const nextForm = {
+          title: data.title || "",
+          executiveSummary: data.executiveSummary || "",
+          painPoints: data.painPoints || "",
+          detailedSolution: data.detailedSolution || "",
+        };
+        const primary = data.primaryBlockId || "";
+        const blockIds = data.isBankWide ? BANK_BLOCKS.map((block) => block.code) : primary ? [primary] : [];
+
+        setInnovationId(null);
+        setFormData(nextForm);
+        setInitialFormData(nextForm);
+        setSelectedBlockIds(blockIds);
+        setPrimaryBlockId(primary || blockIds[0] || "");
+        setIsBankWide(data.isBankWide || false);
+      }
+    };
+
+    load()
+      .catch(() => {
+        if (active) setError("Không thể tải nội dung cần chỉnh sửa.");
+      })
+      .finally(() => {
+        if (active) setEditLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [draftId, editId]);
+
+  const userHeaders = useMemo<Record<string, string>>(() => ({
     "Content-Type": "application/json",
     "x-vpb-user": encodeURIComponent(JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode })),
-  };
+  }), [user]);
+
+  const autoSavePayload = useMemo(
+    () => ({
+      ...(editId ? { editId, status: "DRAFT" } : {}),
+      ...(draftId ? { draftId } : {}),
+      primaryBlockId,
+      selectedBlockIds,
+      isBankWide,
+    }),
+    [draftId, editId, isBankWide, primaryBlockId, selectedBlockIds]
+  );
 
   useEffect(() => {
     if (!isPolling || !innovationId || step !== 4) return;
@@ -88,14 +191,14 @@ function NewInnovationContent() {
             setIsPolling(false);
             
             let completeness = { complete: true, missing: [] as string[] };
-            const failLog = data.logs?.find((l: any) => l.action === "FEEDBACK_AUTO");
+            const failLog = (data as InnovationDetailResponse).logs?.find((l) => l.action === "FEEDBACK_AUTO");
             if (failLog && failLog.payload) {
               try {
                 const payload = JSON.parse(failLog.payload);
                 if (payload.completeness) completeness = payload.completeness;
               } catch {}
             } else {
-              const compLog = data.logs?.find((l: any) => l.action === "SCREENING_COMPLETED");
+              const compLog = (data as InnovationDetailResponse).logs?.find((l) => l.action === "SCREENING_COMPLETED");
               if (compLog && compLog.payload) {
                 try {
                   const payload = JSON.parse(compLog.payload);
@@ -104,16 +207,16 @@ function NewInnovationContent() {
               }
             }
 
-            const screening = data.screenings?.[0];
+            const screening = (data as InnovationDetailResponse).screenings?.[0];
             setScreeningResult({
               finalScore: screening?.normalisedScore || 0,
               screeningMethod: screening?.promptTokens ? "llm" : "rule",
               completeness,
-              status: data.status,
+              status: (data as InnovationDetailResponse).status || "DRAFT",
             });
           }
         }
-      } catch (err) {
+      } catch {
         // silent
       }
     }, 3000);
@@ -121,11 +224,11 @@ function NewInnovationContent() {
     return () => clearInterval(interval);
   }, [isPolling, innovationId, step, userHeaders]);
 
-  const handleBlocksChange = (blockIds: string[], primaryId: string, bankWide: boolean) => {
+  const handleBlocksChange = useCallback((blockIds: string[], primaryId: string, bankWide: boolean) => {
     setSelectedBlockIds(blockIds);
     setPrimaryBlockId(primaryId);
     setIsBankWide(bankWide);
-  };
+  }, []);
 
   const canNext = () => {
     if (step === 1) return formData.title.trim() && formData.executiveSummary.trim() && formData.painPoints.trim();
@@ -140,12 +243,22 @@ function NewInnovationContent() {
     setSubmitting(true);
     setError("");
     try {
-      await fetch("/api/innovations/drafts", {
+      const endpoint = editId ? "/api/innovations" : "/api/innovations/drafts";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: userHeaders,
-        body: JSON.stringify({ ...formData, primaryBlockId, isBankWide }),
+        body: JSON.stringify({
+          ...formData,
+          primaryBlockId,
+          selectedBlockIds,
+          isBankWide,
+          status: "DRAFT",
+          ...(editId ? { editId } : {}),
+          ...(draftId ? { draftId } : {}),
+        }),
       });
-      router.push("/innovations/drafts");
+      if (!res.ok) throw new Error("Cannot save draft");
+      router.push("/innovations");
     } catch {
       setError("Không thể lưu bản nháp.");
     } finally {
@@ -174,10 +287,13 @@ function NewInnovationContent() {
         throw new Error(`Failed to submit: ${res.status} ${errorText}`);
       }
       const data = await res.json();
+      if (draftId) {
+        fetch(`/api/innovations/drafts?id=${draftId}`, { method: "DELETE" }).catch(() => {});
+      }
       setInnovationId(data.innovation.id);
       setIsPolling(true);
       setStep(4);
-    } catch (err: any) {
+    } catch (err) {
       console.error("handleSubmit error:", err);
       setError(`Không thể gửi sáng kiến.`);
     } finally {
@@ -190,7 +306,7 @@ function NewInnovationContent() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-text-primary">
-            {editId ? "Chỉnh sửa & Gửi lại Sáng kiến" : "Đề xuất Sáng kiến mới"}
+            {editId ? "Chỉnh sửa & Gửi lại Sáng kiến" : draftId ? "Tiếp tục bản nháp" : "Đề xuất Sáng kiến mới"}
           </h1>
         </div>
 
@@ -226,7 +342,13 @@ function NewInnovationContent() {
           ) : (
             <>
               {step === 1 && (
-                <InnovationInputForm onDataChange={setFormData} />
+                <InnovationInputForm
+                  key={`${editId || "new"}-${draftId || "none"}`}
+                  onDataChange={setFormData}
+                  initialData={initialFormData}
+                  autoSaveEndpoint={editId ? "/api/innovations" : "/api/innovations/drafts"}
+                  autoSavePayload={autoSavePayload}
+                />
               )}
 
               {step === 2 && (
@@ -399,8 +521,8 @@ function NewInnovationContent() {
               </Button>
             )}
             {!submitting && step === 4 && (
-              <Link href="/">
-                <Button>Về Tổng quan</Button>
+              <Link href="/innovations">
+                <Button>Về Ý tưởng của tôi</Button>
               </Link>
             )}
           </div>

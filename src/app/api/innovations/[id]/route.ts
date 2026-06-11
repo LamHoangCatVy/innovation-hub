@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromHeaders } from "@/lib/auth";
 
+const PUBLIC_STATUSES = new Set(["PUBLISHED", "COMPLETED"]);
+const STAFF_EDITABLE_STATUSES = new Set(["DRAFT", "MODIFICATION_REQUESTED"]);
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  let user;
+  try {
+    user = await getUserFromHeaders();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const innovation = await prisma.innovation.findUnique({
       where: { id },
@@ -21,6 +31,17 @@ export async function GET(
       },
     });
     if (!innovation) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const canView =
+      user.role === "ADMIN" ||
+      innovation.authorId === user.userId ||
+      PUBLIC_STATUSES.has(innovation.status) ||
+      innovation.reviews.some((review) => review.reviewerId === user.userId || review.block.code === user.blockCode);
+
+    if (!canView) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     return NextResponse.json(innovation);
   } catch {
     return NextResponse.json({ error: "Failed to fetch innovation" }, { status: 500 });
@@ -60,6 +81,12 @@ export async function PUT(
     if (existing.authorId !== user.userId && user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    if (user.role !== "ADMIN" && !STAFF_EDITABLE_STATUSES.has(existing.status)) {
+      return NextResponse.json(
+        { error: `Cannot update innovation in status "${existing.status}"` },
+        { status: 409 }
+      );
+    }
 
     const body = await request.json();
 
@@ -97,9 +124,15 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Only the author or an ADMIN can delete
+    // Admins may delete from admin management. Staff may only delete unsent drafts.
     if (existing.authorId !== user.userId && user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (user.role !== "ADMIN" && existing.status !== "DRAFT") {
+      return NextResponse.json(
+        { error: `Cannot delete innovation in status "${existing.status}"` },
+        { status: 409 }
+      );
     }
 
     await prisma.innovation.delete({ where: { id } });

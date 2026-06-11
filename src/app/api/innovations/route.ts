@@ -1,21 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateInnovationCode } from "@/lib/utils";
 import { autoScreenInnovation } from "@/lib/screening-service";
 import { getUserFromHeaders } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getUserFromHeaders();
+    const { searchParams } = new URL(request.url);
+    const keyword = searchParams.get("keyword")?.trim() || "";
+    const status = searchParams.get("status")?.trim() || "";
+    const scope = searchParams.get("scope")?.trim() || "";
+    const where: Prisma.InnovationWhereInput = {};
+
+    if (user.role !== "ADMIN" || scope === "mine") {
+      where.authorId = user.userId;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (keyword) {
+      where.OR = [
+        { code: { contains: keyword } },
+        { title: { contains: keyword } },
+        { executiveSummary: { contains: keyword } },
+      ];
+    }
+
     const innovations = await prisma.innovation.findMany({
+      where,
       include: {
         primaryBlock: { select: { code: true, name: true } },
         classifications: { include: { block: { select: { code: true, name: true } } } },
         author: { select: { fullName: true, email: true } },
-        screenings: { include: { scores: { include: { criterion: true } } } },
+        screenings: {
+          include: { scores: { include: { criterion: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
         reviews: true,
+        logs: { orderBy: { createdAt: "desc" }, take: 5 },
         _count: { select: { upvotes: true, comments: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { updatedAt: "desc" },
     });
     return NextResponse.json(innovations);
   } catch {
@@ -84,9 +114,9 @@ export async function POST(request: NextRequest) {
           detailedSolution,
           primaryBlockId: primaryUuid,
           isBankWide: isBankWide || false,
-          version: { increment: 1 },
+          ...(isSubmit ? { version: { increment: 1 } } : {}),
           status: isSubmit ? "PENDING_SCREENING" : "DRAFT",
-          submittedAt: isSubmit ? new Date() : existing.submittedAt,
+          ...(isSubmit ? { submittedAt: new Date() } : {}),
           classifications: {
             create: (selectedBlockIds || [])
               .filter((blockId: string) => blockMap.has(blockId))

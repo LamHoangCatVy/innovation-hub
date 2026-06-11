@@ -27,7 +27,7 @@ import { useUser } from "@/lib/user-context";
 
   const NAV_ITEMS: NAV_ITEM[] = [
   { href: "/innovations/new", label: "Đề xuất mới", icon: Lightbulb, tour: "new-idea" },
-  { href: "/innovations/drafts", label: "Bản nháp của tôi", icon: FileText },
+  { href: "/innovations", label: "Ý tưởng của tôi", icon: FileText },
   { href: "/academy", label: "Innovation Academy", icon: GraduationCap },
   { href: "/hub", label: "Nhà Chung", icon: Globe, tour: "hub" },
 ];
