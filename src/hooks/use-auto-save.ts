@@ -24,7 +24,7 @@ export function useAutoSave<T>(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-vpb-user": JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode }),
+          "x-vpb-user": encodeURIComponent(JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode })),
         },
         body: serialized,
       });

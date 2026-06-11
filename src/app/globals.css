@@ -52,6 +52,11 @@
 }
 
 @layer utilities {
+  .department-orbit-canvas canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
   .glass-card {
     @apply bg-surface-elevated border border-border rounded-xl shadow-sm;
   }

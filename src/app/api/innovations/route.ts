@@ -105,13 +105,10 @@ export async function POST(request: NextRequest) {
         include: { author: { select: { fullName: true } } },
       });
 
-      let screeningResult = null;
       if (isSubmit) {
-        try {
-          screeningResult = await autoScreenInnovation(innovation.id);
-        } catch (err) {
+        // Fire-and-forget
+        autoScreenInnovation(innovation.id).catch(async (err) => {
           console.error("Auto-screen failed on resubmit:", err);
-          // Leave status PENDING_SCREENING; log the failure for retry
           await prisma.innovationLog.create({
             data: {
               innovationId: innovation.id,
@@ -120,10 +117,10 @@ export async function POST(request: NextRequest) {
               performedBy: "system",
             },
           });
-        }
+        });
       }
 
-      return NextResponse.json({ innovation, screening: screeningResult }, { status: 200 });
+      return NextResponse.json({ innovation, screening: null }, { status: 200 });
     }
 
     // -----------------------------------------------------------------------
@@ -171,13 +168,10 @@ export async function POST(request: NextRequest) {
       include: { author: { select: { fullName: true } } },
     });
 
-    let screeningResult = null;
     if (isSubmit) {
-      try {
-        screeningResult = await autoScreenInnovation(innovation.id);
-      } catch (err) {
+      // Fire-and-forget
+      autoScreenInnovation(innovation.id).catch(async (err) => {
         console.error("Auto-screen failed:", err);
-        // Leave status PENDING_SCREENING; log the failure for retry via detail page
         await prisma.innovationLog.create({
           data: {
             innovationId: innovation.id,
@@ -186,11 +180,12 @@ export async function POST(request: NextRequest) {
             performedBy: "system",
           },
         });
-      }
+      });
     }
 
-    return NextResponse.json({ innovation, screening: screeningResult }, { status: 201 });
-  } catch {
+    return NextResponse.json({ innovation, screening: null }, { status: 201 });
+  } catch (err) {
+    console.error("POST /api/innovations error:", err);
     return NextResponse.json({ error: "Failed to create innovation" }, { status: 500 });
   }
 }

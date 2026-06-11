@@ -77,7 +77,7 @@ export async function runLLMScreening(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model: "deepseek-v4-pro",
       messages: [
         { role: "system", content: "Bạn là chuyên gia thẩm định sáng kiến ngân hàng. Chỉ trả về JSON hợp lệ, không kèm text khác." },
         { role: "user", content: prompt },

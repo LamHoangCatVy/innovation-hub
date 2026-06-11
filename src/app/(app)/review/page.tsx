@@ -11,7 +11,7 @@ import { useUser, UserIdentity } from "@/lib/user-context";
 import { BANK_BLOCKS } from "@/lib/constants";
 
 function buildUserHeaders(u: UserIdentity): Record<string, string> {
-  return { "x-vpb-user": JSON.stringify({ userId: u.id, username: u.username, fullName: u.fullName, role: u.role, blockCode: u.blockCode }) };
+  return { "x-vpb-user": encodeURIComponent(JSON.stringify({ userId: u.id, username: u.username, fullName: u.fullName, role: u.role, blockCode: u.blockCode })) };
 }
 
 interface ReviewItem {

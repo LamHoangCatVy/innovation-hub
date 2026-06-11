@@ -43,6 +43,7 @@ function NewInnovationContent() {
     status: string;
   } | null>(null);
   const [innovationId, setInnovationId] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
   const [editLoading, setEditLoading] = useState(!!editId);
 
   useEffect(() => {
@@ -72,8 +73,53 @@ function NewInnovationContent() {
 
   const userHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    "x-vpb-user": JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode }),
+    "x-vpb-user": encodeURIComponent(JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode })),
   };
+
+  useEffect(() => {
+    if (!isPolling || !innovationId || step !== 4) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/innovations/${innovationId}`, { headers: userHeaders });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status !== "PENDING_SCREENING") {
+            setIsPolling(false);
+            
+            let completeness = { complete: true, missing: [] as string[] };
+            const failLog = data.logs?.find((l: any) => l.action === "FEEDBACK_AUTO");
+            if (failLog && failLog.payload) {
+              try {
+                const payload = JSON.parse(failLog.payload);
+                if (payload.completeness) completeness = payload.completeness;
+              } catch {}
+            } else {
+              const compLog = data.logs?.find((l: any) => l.action === "SCREENING_COMPLETED");
+              if (compLog && compLog.payload) {
+                try {
+                  const payload = JSON.parse(compLog.payload);
+                  if (payload.complete !== undefined) completeness.complete = payload.complete;
+                } catch {}
+              }
+            }
+
+            const screening = data.screenings?.[0];
+            setScreeningResult({
+              finalScore: screening?.normalisedScore || 0,
+              screeningMethod: screening?.promptTokens ? "llm" : "rule",
+              completeness,
+              status: data.status,
+            });
+          }
+        }
+      } catch (err) {
+        // silent
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isPolling, innovationId, step, userHeaders]);
 
   const handleBlocksChange = (blockIds: string[], primaryId: string, bankWide: boolean) => {
     setSelectedBlockIds(blockIds);
@@ -123,15 +169,17 @@ function NewInnovationContent() {
           ...(editId ? { editId } : {}),
         }),
       });
-      if (!res.ok) throw new Error("Failed to submit");
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to submit: ${res.status} ${errorText}`);
+      }
       const data = await res.json();
       setInnovationId(data.innovation.id);
-      if (data.screening) {
-        setScreeningResult(data.screening);
-      }
+      setIsPolling(true);
       setStep(4);
-    } catch {
-      setError("Không thể gửi sáng kiến. Vui lòng thử lại.");
+    } catch (err: any) {
+      console.error("handleSubmit error:", err);
+      setError(`Không thể gửi sáng kiến.`);
     } finally {
       setSubmitting(false);
     }
@@ -178,137 +226,149 @@ function NewInnovationContent() {
           ) : (
             <>
               {step === 1 && (
-            <InnovationInputForm onDataChange={setFormData} />
-          )}
-
-          {step === 2 && (
-            <ClassificationPanel
-              selectedBlockIds={selectedBlockIds}
-              primaryBlockId={primaryBlockId}
-              isBankWide={isBankWide}
-              onBlocksChange={handleBlocksChange}
-            />
-          )}
-
-          {step === 3 && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary">Bước 3: Xác nhận & Gửi</h2>
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-surface-alt border border-border">
-                  <p className="text-sm font-medium text-text-primary">{formData.title || "(Chưa có tiêu đề)"}</p>
-                  <p className="text-xs text-text-muted mt-1 line-clamp-2">{formData.executiveSummary}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedBlockIds.map((code) => (
-                    <Badge key={code} variant={code === primaryBlockId ? "info" : "default"}>
-                      {code}{code === primaryBlockId ? " (Chính)" : ""}
-                    </Badge>
-                  ))}
-                  {isBankWide && <Badge variant="warning">Toàn ngân hàng</Badge>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step >= 4 && screeningResult && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary">Kết quả Đánh giá AI</h2>
-
-              {/* Score */}
-              <div className="text-center py-6">
-                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-brand text-brand mb-3">
-                  <span className="text-3xl font-bold">{screeningResult.finalScore}</span>
-                </div>
-                <p className="text-sm text-text-muted">/100 điểm ({screeningResult.screeningMethod === "llm" ? "AI chấm" : "Chấm quy tắc"})</p>
-              </div>
-
-              {/* Status-aware messaging */}
-              {screeningResult.status === "IN_REVIEW" && (
-                <div className="p-5 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                  <div className="flex items-center gap-2">
-                    <Clock size={20} className="text-blue-400" />
-                    <span className="font-semibold text-blue-400">Đang chờ PIC khối duyệt</span>
-                  </div>
-                  <p className="text-sm text-blue-400/80 mt-2">
-                    Sáng kiến đã vượt qua đánh giá AI thành công. Hệ thống đã chuyển tiếp đến đầu mối phê duyệt (PIC) của khối để xem xét. Bạn sẽ nhận được thông báo khi có kết quả.
-                  </p>
-                </div>
+                <InnovationInputForm onDataChange={setFormData} />
               )}
 
-              {screeningResult.status === "MODIFICATION_REQUESTED" && (
-                <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle size={20} className="text-amber-400" />
-                    <span className="font-semibold text-amber-400">Cần bổ sung thông tin</span>
-                  </div>
-                  <p className="text-sm text-amber-400/80 mt-2">
-                    Sáng kiến chưa đạt yêu cầu để chuyển duyệt. Vui lòng bổ sung các nội dung sau:
-                  </p>
-                  {!screeningResult.completeness.complete && (
-                    <ul className="mt-3 space-y-1">
-                      {screeningResult.completeness.missing.map((m, i) => (
-                        <li key={i} className="text-sm text-amber-400 flex items-start gap-2">
-                          <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                          {m}
-                        </li>
+              {step === 2 && (
+                <ClassificationPanel
+                  selectedBlockIds={selectedBlockIds}
+                  primaryBlockId={primaryBlockId}
+                  isBankWide={isBankWide}
+                  onBlocksChange={handleBlocksChange}
+                />
+              )}
+
+              {step === 3 && (
+                <div className="space-y-6">
+                  <h2 className="text-lg font-semibold text-text-primary">Bước 3: Xác nhận & Gửi</h2>
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-lg bg-surface-alt border border-border">
+                      <p className="text-sm font-medium text-text-primary">{formData.title || "(Chưa có tiêu đề)"}</p>
+                      <p className="text-xs text-text-muted mt-1 line-clamp-2">{formData.executiveSummary}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedBlockIds.map((code) => (
+                        <Badge key={code} variant={code === primaryBlockId ? "info" : "default"}>
+                          {code}{code === primaryBlockId ? " (Chính)" : ""}
+                        </Badge>
                       ))}
-                    </ul>
-                  )}
-                  {screeningResult.finalScore < 40 && (
-                    <p className="text-sm text-amber-400/80 mt-2">
-                      Điểm AI ({screeningResult.finalScore}/100) chưa đạt ngưỡng tối thiểu. Hãy bổ sung thêm dẫn chứng, số liệu cụ thể để cải thiện điểm số.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {screeningResult.status !== "IN_REVIEW" && screeningResult.status !== "MODIFICATION_REQUESTED" && screeningResult.completeness.complete && (
-                <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 size={20} className="text-emerald-400" />
-                    <span className="font-semibold text-emerald-400">Thông tin đầy đủ</span>
+                      {isBankWide && <Badge variant="warning">Toàn ngân hàng</Badge>}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {innovationId && (
-                <Link href={`/innovations/${innovationId}`}>
-                  <Button variant="outline" className="w-full">
-                    Xem chi tiết sáng kiến
-                  </Button>
-                </Link>
-              )}
-            </div>
-          )}
+              {step >= 4 && screeningResult && (
+                <div className="space-y-6">
+                  <h2 className="text-lg font-semibold text-text-primary">Kết quả Đánh giá AI</h2>
 
-          {/* Screening not returned (failed) — show pending state */}
-          {step >= 4 && !screeningResult && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-text-primary">Đang xử lý</h2>
-              <div className="p-5 rounded-xl bg-purple-500/10 border border-purple-500/30">
-                <div className="flex items-center gap-2">
-                  <Clock size={20} className="text-purple-400" />
-                  <span className="font-semibold text-purple-400">Đang chờ AI chấm điểm</span>
+                  {/* Score */}
+                  <div className="text-center py-6">
+                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-brand text-brand mb-3">
+                      <span className="text-3xl font-bold">{screeningResult.finalScore}</span>
+                    </div>
+                    <p className="text-sm text-text-muted">/100 điểm ({screeningResult.screeningMethod === "llm" ? "AI chấm" : "Chấm quy tắc"})</p>
+                  </div>
+
+                  {/* Status-aware messaging */}
+                  {screeningResult.status === "IN_REVIEW" && (
+                    <div className="p-5 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                      <div className="flex items-center gap-2">
+                        <Clock size={20} className="text-blue-400" />
+                        <span className="font-semibold text-blue-400">Đang chờ PIC khối duyệt</span>
+                      </div>
+                      <p className="text-sm text-blue-400/80 mt-2">
+                        Sáng kiến đã vượt qua đánh giá AI thành công. Hệ thống đã chuyển tiếp đến đầu mối phê duyệt (PIC) của khối để xem xét. Bạn sẽ nhận được thông báo khi có kết quả.
+                      </p>
+                    </div>
+                  )}
+
+                  {screeningResult.status === "MODIFICATION_REQUESTED" && (
+                    <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle size={20} className="text-amber-400" />
+                        <span className="font-semibold text-amber-400">Cần bổ sung thông tin</span>
+                      </div>
+                      <p className="text-sm text-amber-400/80 mt-2">
+                        Sáng kiến chưa đạt yêu cầu để chuyển duyệt. Vui lòng bổ sung các nội dung sau:
+                      </p>
+                      {!screeningResult.completeness.complete && (
+                        <ul className="mt-3 space-y-1">
+                          {screeningResult.completeness.missing.map((m, i) => (
+                            <li key={i} className="text-sm text-amber-400 flex items-start gap-2">
+                              <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                              {m}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {screeningResult.finalScore < 40 && (
+                        <p className="text-sm text-amber-400/80 mt-2">
+                          Điểm AI ({screeningResult.finalScore}/100) chưa đạt ngưỡng tối thiểu. Hãy bổ sung thêm dẫn chứng, số liệu cụ thể để cải thiện điểm số.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {screeningResult.status !== "IN_REVIEW" && screeningResult.status !== "MODIFICATION_REQUESTED" && screeningResult.completeness.complete && (
+                    <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={20} className="text-emerald-400" />
+                        <span className="font-semibold text-emerald-400">Thông tin đầy đủ</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {innovationId && (
+                    <Link href={`/innovations/${innovationId}`}>
+                      <Button variant="outline" className="w-full">
+                        Xem chi tiết sáng kiến
+                      </Button>
+                    </Link>
+                  )}
                 </div>
-                <p className="text-sm text-purple-400/80 mt-2">
-                  Sáng kiến đã được ghi nhận nhưng quá trình chấm điểm AI gặp sự cố. Bạn có thể thử lại từ trang chi tiết sáng kiến.
-                </p>
-              </div>
-              {innovationId && (
-                <Link href={`/innovations/${innovationId}`}>
-                  <Button variant="outline" className="w-full">
-                    Xem chi tiết & Thử lại
-                  </Button>
-                </Link>
               )}
-            </div>
-          )}
 
-          {error && (
-            <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-              {error}
-            </div>
-          )}
+              {/* Polling / Loading State */}
+              {isPolling && (
+                <div className="space-y-6">
+                  <h2 className="text-lg font-semibold text-text-primary">Đang xử lý</h2>
+                  <div className="p-8 rounded-xl bg-surface-alt border border-border flex flex-col items-center justify-center text-center">
+                    <Spinner size={32} className="text-brand mb-4" />
+                    <h3 className="font-semibold text-text-primary mb-1">Đang chấm điểm bằng AI</h3>
+                    <p className="text-sm text-text-muted">Quá trình này có thể mất từ 10-15 giây. Vui lòng không đóng trang.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Screening not returned (failed completely) */}
+              {step >= 4 && !isPolling && !screeningResult && (
+                <div className="space-y-6">
+                  <h2 className="text-lg font-semibold text-text-primary">Xử lý thất bại</h2>
+                  <div className="p-5 rounded-xl bg-purple-500/10 border border-purple-500/30">
+                    <div className="flex items-center gap-2">
+                      <Clock size={20} className="text-purple-400" />
+                      <span className="font-semibold text-purple-400">Không thể chấm điểm AI</span>
+                    </div>
+                    <p className="text-sm text-purple-400/80 mt-2">
+                      Sáng kiến đã được ghi nhận nhưng quá trình chấm điểm AI gặp sự cố. Bạn có thể thử lại từ trang chi tiết sáng kiến.
+                    </p>
+                  </div>
+                  {innovationId && (
+                    <Link href={`/innovations/${innovationId}`}>
+                      <Button variant="outline" className="w-full">
+                        Xem chi tiết & Thử lại
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
             </>
           )}
         </Card>

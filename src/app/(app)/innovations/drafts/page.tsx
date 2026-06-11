@@ -9,7 +9,7 @@ import { FileText, Trash2, Edit3 } from "lucide-react";
 import { useUser, UserIdentity } from "@/lib/user-context";
 
 function buildUserHeaders(u: UserIdentity): Record<string, string> {
-  return { "x-vpb-user": JSON.stringify({ userId: u.id, username: u.username, fullName: u.fullName, role: u.role, blockCode: u.blockCode }) };
+  return { "x-vpb-user": encodeURIComponent(JSON.stringify({ userId: u.id, username: u.username, fullName: u.fullName, role: u.role, blockCode: u.blockCode })) };
 }
 
 interface Draft {
