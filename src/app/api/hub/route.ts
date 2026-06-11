@@ -27,28 +27,36 @@ export async function GET(request: NextRequest) {
         primaryBlock: { select: { name: true } },
         author: { select: { fullName: true } },
         screenings: { select: { normalisedScore: true }, orderBy: { createdAt: "desc" }, take: 1 },
+        comments: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
         _count: { select: { upvotes: true, comments: true } },
         upvotes: { where: { userId: user.userId }, select: { id: true } },
       },
       orderBy: sortBy === "most_upvotes"
         ? { upvotes: { _count: "desc" } }
-        : sortBy === "highest_score"
-          ? undefined : { publishedAt: "desc" },
+        : sortBy === "most_discussed"
+          ? { comments: { _count: "desc" } }
+          : sortBy === "highest_score"
+            ? undefined : { publishedAt: "desc" },
     });
 
-    const mapped = innovations.map((i) => ({
-      id: i.id,
-      code: i.code,
-      title: i.title,
-      executiveSummary: i.executiveSummary,
-      primaryBlockName: i.primaryBlock?.name || "",
-      normalisedScore: i.screenings[0]?.normalisedScore ?? null,
-      upvoteCount: i._count.upvotes,
-      commentCount: i._count.comments,
-      authorName: i.author.fullName,
-      publishedAt: i.publishedAt?.toISOString() || i.createdAt.toISOString(),
-      isUpvoted: i.upvotes.length > 0,
-    }));
+    const mapped = innovations.map((i) => {
+      const publishedAt = i.publishedAt?.toISOString() || i.createdAt.toISOString();
+      const lastActivityAt = i.comments[0]?.createdAt.toISOString() ?? publishedAt;
+      return {
+        id: i.id,
+        code: i.code,
+        title: i.title,
+        executiveSummary: i.executiveSummary,
+        primaryBlockName: i.primaryBlock?.name || "",
+        normalisedScore: i.screenings[0]?.normalisedScore ?? null,
+        upvoteCount: i._count.upvotes,
+        commentCount: i._count.comments,
+        authorName: i.author.fullName,
+        publishedAt,
+        lastActivityAt,
+        isUpvoted: i.upvotes.length > 0,
+      };
+    });
 
     if (sortBy === "highest_score") {
       mapped.sort((a, b) => (b.normalisedScore ?? 0) - (a.normalisedScore ?? 0));

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ArrowLeft, Brain, Star, Edit3, AlertTriangle } from "lucide-react";
+import { Discussion } from "@/components/innovations/discussion";
 
   interface InnovationDetail {
     id: string;
@@ -226,6 +227,10 @@ export default function InnovationDetailPage() {
             )}
           </div>
         </div>
+
+        <Card>
+          <Discussion innovationId={data.id} />
+        </Card>
       </div>
     </>
   );
