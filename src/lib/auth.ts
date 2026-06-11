@@ -19,7 +19,7 @@ export async function getUserFromHeaders(): Promise<RequestUser> {
   }
 
   return {
-    userId: "seed-user-1",
+    userId: "admin-001",
     username: "admin",
     fullName: "Admin User",
     role: "ADMIN",

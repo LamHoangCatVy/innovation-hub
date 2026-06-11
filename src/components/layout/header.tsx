@@ -1,12 +1,9 @@
 "use client";
 
-import { Bell, Search, UserRound } from "lucide-react";
-import { RoleSwitcher } from "./role-switcher";
-import { useUser } from "@/lib/user-context";
+import { Bell, Search, Compass } from "lucide-react";
+import { UserSwitcher } from "./user-switcher";
 
 export function Header() {
-  const { user, setRole, switchStaff } = useUser();
-
   return (
     <header className="sticky top-0 z-30 h-16 bg-surface/80 backdrop-blur-md border-b border-border px-6 flex items-center justify-between">
       <div className="flex items-center gap-4 flex-1 max-w-xl">
@@ -20,20 +17,23 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        {user.role === "STAFF" && (
-          <span className="text-xs text-text-secondary bg-surface-alt px-3 py-1.5 rounded-lg border border-border flex items-center gap-1.5">
-            <UserRound size={12} />
-            {user.fullName}
-            <span className="text-text-muted">({user.blockCode})</span>
-          </span>
-        )}
+      <div className="flex items-center gap-3">
+        <UserSwitcher />
 
-        <RoleSwitcher role={user.role} onChange={(r) => setRole(r)} onSwitchStaff={switchStaff} />
+        <button
+          onClick={() => {
+            localStorage.removeItem("vpb_tour_done");
+            localStorage.removeItem("vpb_onboarding_done");
+            window.location.href = window.location.href;
+          }}
+          title="Show me around"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-text-muted hover:text-brand hover:bg-brand/5 transition-colors cursor-pointer"
+        >
+          <Compass size={14} /> Tour
+        </button>
 
         <button className="relative p-2 rounded-lg hover:bg-surface-alt text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
           <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-brand" />
         </button>
       </div>
     </header>

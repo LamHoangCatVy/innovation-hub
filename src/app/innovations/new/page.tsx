@@ -96,24 +96,14 @@ export default function NewInnovationPage() {
     setSubmitting(true);
     setError("");
     try {
-      const res = await fetch("/api/innovations", {
+      await fetch("/api/innovations/drafts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-vpb-user": JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode }),
-        },
-        body: JSON.stringify({
-          ...formData,
-          primaryBlockId,
-          selectedBlockIds,
-          isBankWide,
-          status: "DRAFT",
-        }),
+        headers: userHeaders,
+        body: JSON.stringify({ ...formData, primaryBlockId, isBankWide }),
       });
-      if (!res.ok) throw new Error("Failed to save draft");
       router.push("/innovations/drafts");
     } catch {
-      setError("Không thể lưu bản nháp. Vui lòng thử lại.");
+      setError("Không thể lưu bản nháp.");
     } finally {
       setSubmitting(false);
     }

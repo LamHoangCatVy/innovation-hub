@@ -84,7 +84,9 @@ export async function POST(request: NextRequest) {
     if (isSubmit) {
       try {
         screeningResult = await autoScreenInnovation(innovation.id);
-      } catch {}
+      } catch (err) {
+        console.error("Auto-screen failed:", err);
+      }
     }
 
     return NextResponse.json({ innovation, screening: screeningResult }, { status: 201 });

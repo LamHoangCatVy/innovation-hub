@@ -2,21 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { X, Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
+import { X, Send, User, Sparkles, Loader2, Heart } from "lucide-react";
 
 interface Message {
-  role: "user" | "ai" | "system";
+  role: "user" | "ai";
   text: string;
 }
-
-const SYSTEM_PROMPT = `Bạn là YumAI - trợ lý Đổi mới Sáng tạo của ngân hàng. Nhiệm vụ của bạn:
-1. Hướng dẫn người dùng cách tạo sáng kiến mới từng bước
-2. Tư vấn cách viết executive summary, pain points hiệu quả
-3. Gợi ý các framework chấm điểm phù hợp
-4. Phân tích sơ bộ chất lượng sáng kiến dựa trên tiêu chí
-5. Trả lời câu hỏi về quy trình phê duyệt
-
-Hãy trả lời ngắn gọn, thân thiện bằng tiếng Việt.`;
 
 interface YumAIPanelProps {
   open: boolean;
@@ -25,15 +16,24 @@ interface YumAIPanelProps {
 
 export function YumAIPanel({ open, onToggle }: YumAIPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", text: "Xin chào! Tôi là YumAI. Tôi có thể giúp bạn:\n\n1. Hướng dẫn tạo sáng kiến\n2. Phân tích chất lượng ý tưởng\n3. Tư vấn framework chấm điểm\n4. Giải đáp quy trình phê duyệt\n\nHãy hỏi tôi bất cứ điều gì!" },
+    {
+      role: "ai",
+      text: "Chào bạn! Mình là YumAI - trợ lý của Tổ Công tác Đổi mới Sáng tạo \n\nMình có thể giúp bạn:\n• Hướng dẫn gửi sáng kiến\n• Tư vấn cách viết cho điểm cao\n• Giải thích framework chấm điểm\n• Align ý tưởng với chiến lược khối\n\nBạn muốn hỏi gì hôm nay?",
+    },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
-  }, [messages]);
+  }, [messages, thinking]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
 
   const send = async () => {
     if (!input.trim() || sending) return;
@@ -41,61 +41,27 @@ export function YumAIPanel({ open, onToggle }: YumAIPanelProps) {
     setMessages((p) => [...p, { role: "user", text: userMsg }]);
     setInput("");
     setSending(true);
+    setThinking(true);
 
     try {
-      const useLLM = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY && process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY.length > 10;
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: messages
+            .map((m) => ({ role: m.role, content: m.text }))
+            .concat([{ role: "user" as const, content: userMsg }]),
+        }),
+      });
 
-      if (useLLM) {
-        const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY}` },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              ...messages.filter((m) => m.role !== "system").map((m) => ({ role: m.role, content: m.text })),
-              { role: "user", content: userMsg },
-            ],
-            temperature: 0.7,
-            max_tokens: 1024,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const reply = data.choices?.[0]?.message?.content || "Xin lỗi, tôi chưa hiểu. Bạn có thể hỏi lại?";
-          setMessages((p) => [...p, { role: "ai", text: reply }]);
-        } else {
-          fallbackReply(userMsg);
-        }
-      } else {
-        await new Promise((r) => setTimeout(r, 600));
-        fallbackReply(userMsg);
-      }
+      const data = await res.json();
+      setMessages((p) => [...p, { role: "ai", text: data.reply || "YumAI đang suy nghĩ... Bạn hỏi lại nhé!" }]);
     } catch {
-      fallbackReply(userMsg);
+      setMessages((p) => [...p, { role: "ai", text: "Úi, có lỗi kết nối rồi. Bạn kiểm tra lại mạng và thử lại giúp mình nhé!" }]);
     } finally {
       setSending(false);
+      setThinking(false);
     }
-  };
-
-  const fallbackReply = (msg: string) => {
-    const lower = msg.toLowerCase();
-    let reply: string;
-
-    if (lower.includes("tạo") || lower.includes("mới") || lower.includes("sáng kiến") || lower.includes("đề xuất")) {
-      reply = "Để tạo sáng kiến mới:\n\n1. Vào menu \"Đề xuất mới\" bên trái\n2. Điền Tiêu đề (max 150 ký tự)\n3. Viết Tóm tắt giải pháp - giải thích ý tưởng của bạn\n4. Mô tả Thực trạng & Nỗi đau - vấn đề cần giải quyết\n5. Chọn Khối thụ hưởng - ai sẽ được lợi từ sáng kiến\n6. Nhấn \"Gửi Sáng kiến\"\n\nAI sẽ tự động chấm điểm và đưa ra phản hồi!";
-    } else if (lower.includes("điểm") || lower.includes("chấm") || lower.includes("score") || lower.includes("tiêu chí")) {
-      reply = "Hệ thống dùng 2 bộ tiêu chí:\n\n**RICE Framework** (cho Khối Kinh doanh):\n- Reach: Quy mô thụ hưởng\n- Impact: Tác động tài chính\n- Confidence: Độ tin cậy dữ liệu\n- Effort: Nỗ lực triển khai\n\n**Operational Framework** (cho Khối Vận hành):\n- Time Saving, Cost Reduction, Employee Experience\n- OpRisk Mitigation, Compliance\n\nĐiểm cuối cùng quy về thang 100.";
-    } else if (lower.includes("duyệt") || lower.includes("pic") || lower.includes("phê") || lower.includes("review")) {
-      reply = "Quy trình phê duyệt:\n\n1. Bạn gửi sáng kiến → AI tự động chấm điểm\n2. Nếu đầy đủ → Chuyển đến PIC của khối\n3. PIC xem xét → Approve / Reject / Yêu cầu sửa\n4. Nếu Approve → Sáng kiến lên Nhà Chung\n5. Nếu bị từ chối → Bạn nhận feedback và có thể sửa lại\n\nBạn có thể theo dõi trạng thái trong phần chi tiết sáng kiến.";
-    } else if (lower.includes("hướng dẫn") || lower.includes("help") || lower.includes("giúp")) {
-      reply = "Tôi có thể giúp bạn:\n\n• Hướng dẫn tạo sáng kiến mới\n• Giải thích cách chấm điểm\n• Tư vấn quy trình phê duyệt\n• Phân tích chất lượng ý tưởng\n\nBạn muốn biết thêm về chủ đề nào?";
-    } else {
-      reply = "Cảm ơn câu hỏi của bạn! Hiện tại tôi đang chạy ở chế độ offline. Để kích hoạt AI đầy đủ, hãy thêm DEEPSEEK_API_KEY vào file .env.\n\nTôi vẫn có thể giúp bạn các chủ đề:\n• Tạo sáng kiến mới\n• Cách chấm điểm\n• Quy trình phê duyệt\n\nBạn muốn tìm hiểu thêm về gì?";
-    }
-
-    setMessages((p) => [...p, { role: "ai", text: reply }]);
   };
 
   return (
@@ -103,85 +69,116 @@ export function YumAIPanel({ open, onToggle }: YumAIPanelProps) {
       {!open && (
         <button
           onClick={onToggle}
-          className="fixed right-4 bottom-4 z-50 w-12 h-12 rounded-full bg-brand text-white shadow-lg hover:bg-brand-light transition-all cursor-pointer flex items-center justify-center animate-bounce"
+          data-tour="yumai"
+          className="fixed right-4 bottom-4 z-50 group"
         >
-          <Sparkles size={20} />
+          <div className="relative">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand to-brand-light shadow-lg shadow-brand/25 flex items-center justify-center transition-all group-hover:scale-105 group-hover:shadow-xl cursor-pointer">
+              <Sparkles size={22} className="text-white" />
+            </div>
+            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-brand flex items-center justify-center">
+              <Heart size={10} className="text-brand fill-brand" />
+            </span>
+          </div>
         </button>
       )}
 
       <div
         className={cn(
-          "fixed right-0 top-0 z-40 h-screen w-[400px] bg-surface-elevated border-l border-border shadow-xl flex flex-col transition-transform duration-300",
+          "fixed right-0 top-0 z-40 h-screen w-[420px] bg-surface-elevated border-l border-border shadow-2xl flex flex-col transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-alt">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand to-brand-light flex items-center justify-center">
-              <Bot size={16} className="text-white" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-brand/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-brand-light flex items-center justify-center shadow-md">
+                <Sparkles size={18} className="text-white" />
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-text-primary">YumAI Assistant</p>
-              <p className="text-[10px] text-text-muted">Trợ lý Đổi mới Sáng tạo</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-text-primary">YumAI</p>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">Online</span>
+              </div>
+              <p className="text-[11px] text-text-muted">Trợ lý Tổ Công tác ĐMST</p>
             </div>
           </div>
-          <button onClick={onToggle} className="p-1.5 hover:bg-surface-alt rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer">
+          <button onClick={onToggle} className="p-2 hover:bg-surface-alt rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer">
             <X size={18} />
           </button>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-5">
           {messages.map((m, i) => (
-            <div key={i} className={cn("flex gap-2", m.role === "user" ? "justify-end" : "")}>
+            <div key={i} className={cn("flex gap-3", m.role === "user" ? "justify-end" : "")}>
               {m.role === "ai" && (
-                <div className="w-7 h-7 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Bot size={14} className="text-brand" />
+                <div className="w-8 h-8 rounded-xl bg-brand/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Sparkles size={14} className="text-brand" />
                 </div>
               )}
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap",
-                  m.role === "user"
-                    ? "bg-brand text-white rounded-br-md"
-                    : "bg-surface-alt text-text-primary rounded-bl-md"
+              <div className={cn("space-y-1", m.role === "user" ? "items-end" : "")}>
+                {m.role === "ai" && (
+                  <span className="text-[10px] text-text-muted font-medium ml-1">YumAI</span>
                 )}
-              >
-                {m.text}
+                <div
+                  className={cn(
+                    "rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed max-w-[85%]",
+                    m.role === "user"
+                      ? "bg-brand text-white rounded-br-md ml-auto"
+                      : "bg-surface-alt text-text-primary rounded-bl-md border border-border/50"
+                  )}
+                >
+                  {m.text}
+                </div>
               </div>
               {m.role === "user" && (
-                <div className="w-7 h-7 rounded-full bg-brand/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-full bg-brand/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <User size={14} className="text-brand" />
                 </div>
               )}
             </div>
           ))}
-          {sending && (
-            <div className="flex gap-2">
-              <div className="w-7 h-7 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0">
-                <Loader2 size={14} className="text-brand animate-spin" />
+
+          {thinking && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-xl bg-brand/10 flex items-center justify-center flex-shrink-0">
+                <Sparkles size={14} className="text-brand" />
+              </div>
+              <div className="bg-surface-alt border border-border/50 rounded-2xl rounded-bl-md px-5 py-3.5">
+                <div className="flex gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-brand/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <div className="w-2 h-2 rounded-full bg-brand/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <div className="w-2 h-2 rounded-full bg-brand/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
               </div>
             </div>
           )}
         </div>
 
         <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-surface-alt rounded-xl p-1.5 border border-border focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/10 transition-all">
             <input
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder="Hỏi YumAI bất cứ điều gì..."
               disabled={sending}
-              className="flex-1 bg-surface-alt border border-border rounded-lg px-3.5 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand disabled:opacity-50"
+              className="flex-1 bg-transparent px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none disabled:opacity-50"
             />
             <button
               onClick={send}
               disabled={!input.trim() || sending}
-              className="p-2 bg-brand text-white rounded-lg hover:bg-brand-light transition-colors cursor-pointer disabled:opacity-50"
+              className="p-2 bg-brand text-white rounded-lg hover:bg-brand-light transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             </button>
           </div>
+          <p className="text-[10px] text-text-muted text-center mt-2">
+            YumAI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.
+          </p>
         </div>
       </div>
     </>

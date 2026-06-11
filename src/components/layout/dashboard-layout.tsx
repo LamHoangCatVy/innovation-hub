@@ -3,7 +3,7 @@
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { YumAIPanel } from "./yumai-panel";
-import { OnboardingGuide } from "./onboarding-guide";
+import { ProductTour } from "./product-tour";
 import { ReactNode, useState } from "react";
 import { UserProvider } from "@/lib/user-context";
 
@@ -18,7 +18,7 @@ function DashboardInner({ children }: { children: ReactNode }) {
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
       <YumAIPanel open={yumaiOpen} onToggle={() => setYumaiOpen(!yumaiOpen)} />
-      <OnboardingGuide />
+      <ProductTour />
     </div>
   );
 }

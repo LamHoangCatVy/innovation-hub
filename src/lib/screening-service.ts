@@ -140,20 +140,38 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
       },
     });
   } else {
-    newStatus = "IN_REVIEW";
     const blocksToReview = [
       ...new Set([innovation.primaryBlockId!, ...innovation.classifications.map((c) => c.blockId)]),
     ];
     for (const bid of blocksToReview) {
+      const isPrimary = bid === innovation.primaryBlockId;
       await prisma.review.upsert({
         where: { innovationId_blockId: { innovationId, blockId: bid } },
-        create: { innovationId, blockId: bid, reviewerId: "seed-user-1", decision: "PENDING" },
-        update: {},
+        create: {
+          innovationId,
+          blockId: bid,
+          reviewerId: "admin-001",
+          decision: isPrimary ? "APPROVED" : "PENDING",
+          reviewedAt: isPrimary ? new Date() : null,
+        },
+        update: {
+          decision: isPrimary ? "APPROVED" : "PENDING",
+          reviewedAt: isPrimary ? new Date() : null,
+        },
       });
     }
+
+    newStatus = "PUBLISHED";
+    await prisma.innovation.update({
+      where: { id: innovationId },
+      data: {
+        status: "PUBLISHED",
+        approvedAt: new Date(),
+        publishedAt: new Date(),
+      },
+    });
   }
 
-  await prisma.innovation.update({ where: { id: innovationId }, data: { status: newStatus } });
   await prisma.innovationLog.create({
     data: {
       innovationId,

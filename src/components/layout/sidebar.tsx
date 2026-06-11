@@ -12,19 +12,33 @@ import {
   Settings,
   ChevronLeft,
   Shuffle,
+  BarChart3,
+  GraduationCap,
 } from "lucide-react";
 import { useState } from "react";
 import { useUser } from "@/lib/user-context";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Tổng quan", icon: LayoutDashboard },
-  { href: "/innovations/new", label: "Đề xuất mới", icon: Lightbulb },
+  interface NAV_ITEM {
+    href: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    tour?: string;
+  }
+
+  const NAV_ITEMS: NAV_ITEM[] = [
+  { href: "/innovations/new", label: "Đề xuất mới", icon: Lightbulb, tour: "new-idea" },
   { href: "/innovations/drafts", label: "Bản nháp của tôi", icon: FileText },
-  { href: "/review", label: "Phê duyệt (PIC)", icon: ClipboardCheck },
-  { href: "/hub", label: "Nhà Chung", icon: Globe },
+  { href: "/academy", label: "Innovation Academy", icon: GraduationCap },
+  { href: "/hub", label: "Nhà Chung", icon: Globe, tour: "hub" },
+];
+
+const PIC_ADMIN_ITEMS: NAV_ITEM[] = [
+  { href: "/review", label: "Phê duyệt (PIC)", icon: ClipboardCheck, tour: "review" },
 ];
 
 const ADMIN_ITEMS = [
+  { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
+  { href: "/admin/innovations", label: "Quản lý Sáng kiến", icon: LayoutDashboard },
   { href: "/admin/frameworks", label: "Framework chấm điểm", icon: Shuffle },
   { href: "/admin/frameworks/new", label: "Thêm Framework", icon: Settings },
 ];
@@ -37,6 +51,7 @@ export function Sidebar() {
 
   return (
     <aside
+      data-tour="sidebar"
       className={cn(
         "fixed left-0 top-0 z-40 h-screen bg-surface-alt border-r border-border flex flex-col transition-all duration-300",
         collapsed ? "w-[68px]" : "w-[260px]"
@@ -67,6 +82,7 @@ export function Sidebar() {
           <Link
             key={item.href}
             href={item.href}
+            data-tour={item.tour}
             className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer group",
               pathname === item.href
@@ -78,6 +94,31 @@ export function Sidebar() {
             {!collapsed && <span>{item.label}</span>}
           </Link>
         ))}
+
+        {role === "ADMIN" && (
+          <div className="pt-4">
+            <div className={cn("px-3 mb-2", collapsed ? "text-center" : "")}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                {!collapsed ? "Phê duyệt" : "..."}
+              </span>
+            </div>
+            {PIC_ADMIN_ITEMS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer group",
+                  pathname === item.href
+                    ? "bg-brand/10 text-brand font-medium"
+                    : "text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary"
+                )}
+              >
+                <item.icon size={20} />
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {role === "ADMIN" && (
           <div className="pt-4">

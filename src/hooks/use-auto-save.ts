@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useUser } from "@/lib/user-context";
 
 export function useAutoSave<T>(
   data: T,
@@ -11,6 +12,7 @@ export function useAutoSave<T>(
   const [lastSavedAt, setLastSavedAt] = useState<string>("");
   const previousRef = useRef<string>("");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { user } = useUser();
 
   const save = useCallback(async () => {
     const serialized = JSON.stringify(data);
@@ -20,7 +22,10 @@ export function useAutoSave<T>(
     try {
       await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-vpb-user": JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode }),
+        },
         body: serialized,
       });
       previousRef.current = serialized;
@@ -32,7 +37,7 @@ export function useAutoSave<T>(
     } catch {
       setSaveStatus("idle");
     }
-  }, [data, endpoint]);
+  }, [data, endpoint, user]);
 
   useEffect(() => {
     const handler = setTimeout(() => {

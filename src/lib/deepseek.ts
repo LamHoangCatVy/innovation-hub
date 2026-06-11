@@ -17,7 +17,7 @@ interface InnovationData {
   isBankWide: boolean;
 }
 
-const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
+const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
 function buildScoringPrompt(innovation: InnovationData, framework: FrameworkData): string {
   const criteriaList = framework.criteria
@@ -72,14 +72,12 @@ export async function runLLMScreening(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model: "deepseek-v4-pro",
       messages: [
         { role: "system", content: "Bạn là chuyên gia thẩm định sáng kiến ngân hàng. Chỉ trả về JSON hợp lệ, không kèm text khác." },
         { role: "user", content: prompt },
       ],
-      temperature: 0.3,
-      max_tokens: 4096,
-      response_format: { type: "json_object" },
+      stream: false,
     }),
   });
 
