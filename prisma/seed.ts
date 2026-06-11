@@ -22,17 +22,47 @@ async function main() {
   await prisma.block.deleteMany();
   await prisma.user.deleteMany();
 
-  const user = await prisma.user.create({
+  await prisma.user.create({
     data: {
-      id: "seed-user-1",
+      id: "admin-001",
       username: "admin",
-      email: "admin@vpb.vn",
+      email: "admin@bank.vn",
       fullName: "Admin User",
       role: "ADMIN",
       blockId: null,
     },
   });
-  console.log("User created:", user.fullName);
+
+  const staffUsers = [
+    { id: "staff-vylhc", username: "vylhc", fullName: "Vũ Yến Ly", blockCode: "RB" },
+    { id: "staff-trungnh4", username: "trungnh4", fullName: "Nguyễn Hữu Trung", blockCode: "CMB" },
+    { id: "staff-ducldc", username: "ducldc", fullName: "Lê Đức Cường", blockCode: "CIB" },
+    { id: "staff-phuchh", username: "phuchh", fullName: "Hoàng Hồng Phúc", blockCode: "Treasury" },
+    { id: "staff-linhht31", username: "linhht31", fullName: "Hoàng Thùy Linh", blockCode: "IT" },
+    { id: "staff-nganht", username: "nganht", fullName: "Hoàng Thanh Ngân", blockCode: "Ops" },
+    { id: "staff-huyennt", username: "huyennt", fullName: "Nguyễn Thu Huyền", blockCode: "Risk" },
+    { id: "staff-quanlm", username: "quanlm", fullName: "Lê Minh Quân", blockCode: "HR" },
+    { id: "staff-thanhnv", username: "thanhnv", fullName: "Nguyễn Văn Thành", blockCode: "Fin" },
+    { id: "staff-anhtd", username: "anhtd", fullName: "Trần Đức Anh", blockCode: "Digital" },
+    { id: "staff-minhbt", username: "minhbt", fullName: "Bùi Tuấn Minh", blockCode: "Legal" },
+    { id: "staff-trangpt", username: "trangpt", fullName: "Phạm Thu Trang", blockCode: "Strategy" },
+  ];
+
+  for (const staff of staffUsers) {
+    const block = await prisma.block.findUnique({ where: { code: staff.blockCode } });
+    await prisma.user.create({
+      data: {
+        id: staff.id,
+        username: staff.username,
+        email: `${staff.username}@bank.vn`,
+        fullName: staff.fullName,
+        role: "STAFF",
+        blockId: block?.id || null,
+      },
+    });
+  }
+
+  console.log("13 users created (1 admin + 12 staff)");
 
   for (const blockData of BANK_BLOCKS) {
     await prisma.block.create({ data: blockData });
@@ -108,7 +138,7 @@ async function main() {
       detailedSolution: "Tích hợp LLM (GPT-based) thông qua API, kết nối với knowledge base của ngân hàng. Pha 1 triển khai FAQ automation, Pha 2 mở rộng sang tư vấn sản phẩm.",
       status: "PUBLISHED",
       version: 1,
-      authorId: "seed-user-1",
+      authorId: "staff-trungnh4",
       primaryBlockId: (await prisma.block.findUnique({ where: { code: "CMB" } }))?.id || null,
       submittedAt: new Date(),
       approvedAt: new Date(),
@@ -123,10 +153,10 @@ async function main() {
     });
   }
 
-  await prisma.innovationUpvote.create({ data: { innovationId: sample.id, userId: "seed-user-1" } });
+  await prisma.innovationUpvote.create({ data: { innovationId: sample.id, userId: "staff-trungnh4" } });
 
   await prisma.innovationComment.create({
-    data: { innovationId: sample.id, authorId: "seed-user-1", content: "Sáng kiến rất hay! Tôi nghĩ chúng ta có thể mở rộng cho cả khối RB." },
+    data: { innovationId: sample.id, authorId: "staff-trungnh4", content: "Sáng kiến rất hay! Tôi nghĩ chúng ta có thể mở rộng cho cả khối RB." },
   });
 
   console.log("Sample innovation created:", sample.title);

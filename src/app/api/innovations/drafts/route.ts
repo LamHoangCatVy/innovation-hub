@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getUserFromHeaders } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const user = await getUserFromHeaders();
     const drafts = await prisma.innovationDraft.findMany({
-      where: { userId: "seed-user-1" },
+      where: { userId: user.userId },
       orderBy: { savedAt: "desc" },
       select: { id: true, title: true, savedAt: true },
     });
@@ -16,11 +18,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getUserFromHeaders();
     const body = await request.json();
     const { title, executiveSummary, painPoints, detailedSolution, primaryBlockId, isBankWide } = body;
 
     const existing = await prisma.innovationDraft.findFirst({
-      where: { userId: "seed-user-1" },
+      where: { userId: user.userId },
       orderBy: { savedAt: "desc" },
     });
 
@@ -30,7 +33,7 @@ export async function POST(request: NextRequest) {
           data: { title, executiveSummary, painPoints, detailedSolution, primaryBlockId, isBankWide, savedAt: new Date() },
         })
       : await prisma.innovationDraft.create({
-          data: { userId: "seed-user-1", title, executiveSummary, painPoints, detailedSolution, primaryBlockId, isBankWide },
+          data: { userId: user.userId, title, executiveSummary, painPoints, detailedSolution, primaryBlockId, isBankWide },
         });
 
     return NextResponse.json(draft);

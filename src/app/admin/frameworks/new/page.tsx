@@ -106,7 +106,7 @@ export default function NewFrameworkPage() {
             </div>
             <div className="space-y-3">
               {criteria.map((c, i) => (
-                <div key={i} className="flex gap-3 items-start p-4 rounded-lg bg-navy-900 border border-navy-700">
+                <div key={i} className="flex gap-3 items-start p-4 rounded-lg bg-surface-alt border border-border">
                   <div className="flex-1 space-y-2">
                     <Input
                       placeholder="Tên tiêu chí"
@@ -160,8 +160,8 @@ export default function NewFrameworkPage() {
                   className={cn(
                     "px-2 py-1.5 rounded text-xs font-medium border transition-all cursor-pointer",
                     blockMapping.includes(code)
-                      ? "border-primary bg-primary/15 text-primary-light"
-                      : "border-navy-700 text-text-muted hover:border-navy-600"
+                      ? "border-brand bg-brand/15 text-brand"
+                      : "border-border text-text-muted hover:border-brand/30"
                   )}
                 >
                   {code}

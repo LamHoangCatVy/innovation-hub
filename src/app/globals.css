@@ -1,53 +1,61 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-navy-950: #020617;
-  --color-navy-900: #0F172A;
-  --color-navy-800: #1E293B;
-  --color-navy-700: #1E3A8A;
-  --color-primary: #1E40AF;
-  --color-primary-light: #3B82F6;
-  --color-gold: #CA8A04;
-  --color-gold-light: #F59E0B;
-  --color-cta: #22C55E;
-  --color-surface: #0F172A;
-  --color-surface-elevated: #1E293B;
-  --color-border: #334155;
-  --color-text-primary: #F8FAFC;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
-  --color-success: #22C55E;
+  --color-brand-600: #059669;
+  --color-brand-500: #10B981;
+  --color-brand-400: #34D399;
+  --color-brand-300: #6EE7B7;
+
+  --color-brand: #059669;
+  --color-brand-light: #10B981;
+  --color-brand-muted: rgba(5, 150, 105, 0.1);
+
+  --color-surface: #F8FAFC;
+  --color-surface-alt: #F1F5F9;
+  --color-surface-elevated: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-border-hover: #CBD5E1;
+
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+
+  --color-cta: #059669;
+  --color-success: #059669;
   --color-danger: #EF4444;
   --color-warning: #F59E0B;
 
-  --font-heading: 'IBM Plex Sans', sans-serif;
-  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Poppins', sans-serif;
 }
 
 @layer base {
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-border) transparent;
+    scrollbar-color: #CBD5E1 transparent;
   }
-
   body {
-    @apply bg-navy-950 text-text-primary font-body antialiased;
+    @apply bg-surface text-text-primary font-body antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
+.dark {
+  --color-surface: #0B1121;
+  --color-surface-alt: #1A2332;
+  --color-surface-elevated: #1E293B;
+  --color-border: #1E293B;
+  --color-border-hover: #334155;
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #64748B;
+}
+
 @layer utilities {
   .glass-card {
-    @apply bg-navy-800/80 backdrop-blur-md border border-navy-700/50 rounded-xl shadow-lg;
+    @apply bg-surface-elevated border border-border rounded-xl shadow-sm;
   }
-
-  .gradient-border {
-    background: linear-gradient(var(--color-navy-950), var(--color-navy-950)) padding-box,
-      linear-gradient(135deg, var(--color-primary), var(--color-gold)) border-box;
-    border: 1px solid transparent;
-  }
-
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary-light to-gold bg-clip-text text-transparent;
+  .dark .glass-card {
+    @apply bg-surface-alt border border-border rounded-xl shadow-lg;
   }
 }

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useUser } from "@/lib/user-context";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { InnovationInputForm } from "@/components/innovations/input-form";
 import { ClassificationPanel } from "@/components/innovations/classification-panel";
@@ -9,16 +11,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { ChevronRight, ChevronLeft, Send, Save } from "lucide-react";
+import { ChevronRight, ChevronLeft, Send, Save, CheckCircle2, AlertTriangle, ExternalLink } from "lucide-react";
 
 const STEPS = [
   { id: 1, label: "Nhập thông tin" },
   { id: 2, label: "Phân loại khối" },
   { id: 3, label: "Xác nhận & Gửi" },
+  { id: 4, label: "Kết quả AI" },
 ];
 
 export default function NewInnovationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const { user } = useUser();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,6 +37,45 @@ export default function NewInnovationPage() {
   const [primaryBlockId, setPrimaryBlockId] = useState("");
   const [isBankWide, setIsBankWide] = useState(false);
   const [error, setError] = useState("");
+  const [screeningResult, setScreeningResult] = useState<{
+    finalScore: number;
+    screeningMethod: string;
+    completeness: { complete: boolean; missing: string[] };
+    status: string;
+    hubUrl: string | null;
+  } | null>(null);
+  const [innovationId, setInnovationId] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(!!editId);
+
+  useEffect(() => {
+    if (editId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEditLoading(true);
+      fetch(`/api/innovations/${editId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.id) {
+            setInnovationId(data.id);
+            setFormData({
+              title: data.title || "",
+              executiveSummary: data.executiveSummary || "",
+              painPoints: data.painPoints || "",
+              detailedSolution: data.detailedSolution || "",
+            });
+            const blockIds = data.classifications?.map((c: { block: { code: string } }) => c.block.code) || [];
+            setSelectedBlockIds(blockIds);
+            setPrimaryBlockId(data.primaryBlock?.code || "");
+            setIsBankWide(data.isBankWide || false);
+          }
+        })
+        .finally(() => setEditLoading(false));
+    }
+  }, [editId]);
+
+  const userHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    "x-vpb-user": JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode }),
+  };
 
   const handleBlocksChange = (blockIds: string[], primaryId: string, bankWide: boolean) => {
     setSelectedBlockIds(blockIds);
@@ -53,7 +98,10 @@ export default function NewInnovationPage() {
     try {
       const res = await fetch("/api/innovations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-vpb-user": JSON.stringify({ userId: user.id, username: user.username, fullName: user.fullName, role: user.role, blockCode: user.blockCode }),
+        },
         body: JSON.stringify({
           ...formData,
           primaryBlockId,
@@ -77,7 +125,7 @@ export default function NewInnovationPage() {
     try {
       const res = await fetch("/api/innovations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: userHeaders,
         body: JSON.stringify({
           ...formData,
           primaryBlockId,
@@ -88,7 +136,11 @@ export default function NewInnovationPage() {
       });
       if (!res.ok) throw new Error("Failed to submit");
       const data = await res.json();
-      router.push(`/innovations/${data.id}`);
+      setInnovationId(data.innovation.id);
+      if (data.screening) {
+        setScreeningResult(data.screening);
+      }
+      setStep(4);
     } catch {
       setError("Không thể gửi sáng kiến. Vui lòng thử lại.");
     } finally {
@@ -109,28 +161,32 @@ export default function NewInnovationPage() {
               <div
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   step === s.id
-                    ? "bg-primary/20 text-primary-light"
+                    ? "bg-brand/20 text-brand"
                     : step > s.id
                       ? "bg-emerald-500/10 text-emerald-400"
-                      : "bg-navy-800 text-text-muted"
+                      : "bg-surface-alt text-text-muted"
                 }`}
               >
                 <span
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                    step >= s.id ? "bg-primary text-white" : "bg-navy-700 text-text-muted"
+                    step >= s.id ? "bg-brand text-white" : "bg-surface-alt text-text-muted"
                   }`}
                 >
                   {s.id}
                 </span>
                 {s.label}
               </div>
-              {s.id < 3 && <ChevronRight size={16} className="text-navy-700" />}
+              {s.id < 4 && <ChevronRight size={16} className="text-border" />}
             </div>
           ))}
         </div>
 
         <Card className="p-8">
-          {step === 1 && (
+          {editLoading ? (
+            <div className="flex justify-center py-12"><Spinner size={32} /></div>
+          ) : (
+            <>
+              {step === 1 && (
             <InnovationInputForm onDataChange={setFormData} />
           )}
 
@@ -146,13 +202,11 @@ export default function NewInnovationPage() {
           {step === 3 && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-text-primary">Bước 3: Xác nhận & Gửi</h2>
-
               <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-navy-900 border border-navy-700">
+                <div className="p-4 rounded-lg bg-surface-alt border border-border">
                   <p className="text-sm font-medium text-text-primary">{formData.title || "(Chưa có tiêu đề)"}</p>
                   <p className="text-xs text-text-muted mt-1 line-clamp-2">{formData.executiveSummary}</p>
                 </div>
-
                 <div className="flex flex-wrap gap-2">
                   {selectedBlockIds.map((code) => (
                     <Badge key={code} variant={code === primaryBlockId ? "info" : "default"}>
@@ -165,10 +219,73 @@ export default function NewInnovationPage() {
             </div>
           )}
 
+          {step >= 4 && screeningResult && (
+            <div className="space-y-6">
+              <h2 className="text-lg font-semibold text-text-primary">Kết quả Đánh giá AI</h2>
+
+              {/* Score */}
+              <div className="text-center py-6">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-brand text-brand mb-3">
+                  <span className="text-3xl font-bold">{screeningResult.finalScore}</span>
+                </div>
+                <p className="text-sm text-text-muted">/100 điểm ({screeningResult.screeningMethod === "llm" ? "AI chấm" : "Chấm quy tắc"})</p>
+              </div>
+
+              {/* Status */}
+              {screeningResult.completeness.complete ? (
+                <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={20} className="text-emerald-400" />
+                    <span className="font-semibold text-emerald-400">Thông tin đầy đủ</span>
+                  </div>
+                  <p className="text-sm text-emerald-400/80 mt-2">
+                    Sáng kiến của bạn đã được AI chấm điểm thành công. Hệ thống đang chuyển tiếp đến đầu mối phê duyệt (PIC) của khối để xem xét. Bạn sẽ nhận được thông báo khi có kết quả.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={20} className="text-amber-400" />
+                    <span className="font-semibold text-amber-400">Cần bổ sung thông tin</span>
+                  </div>
+                  <p className="text-sm text-amber-400/80 mt-2">
+                    AI phát hiện một số thông tin chưa đầy đủ. Điểm hiện tại là đánh giá sơ bộ. Vui lòng bổ sung các nội dung sau để được chấm điểm chính xác hơn:
+                  </p>
+                  <ul className="mt-3 space-y-1">
+                    {screeningResult.completeness.missing.map((m, i) => (
+                      <li key={i} className="text-sm text-amber-400 flex items-start gap-2">
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                        {m}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {screeningResult.hubUrl && (
+                <Link href={screeningResult.hubUrl}>
+                  <Button className="w-full">
+                    <ExternalLink size={16} />
+                    Xem trên Nhà Chung
+                  </Button>
+                </Link>
+              )}
+              {innovationId && (
+                <Link href={`/innovations/${innovationId}`}>
+                  <Button variant="outline" className="w-full">
+                    Xem chi tiết sáng kiến
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
+
           {error && (
             <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
               {error}
             </div>
+          )}
+            </>
           )}
         </Card>
 
@@ -186,15 +303,21 @@ export default function NewInnovationPage() {
           </div>
 
           <div>
-            {step < 3 ? (
+            {submitting && <Spinner size={20} />}
+            {!submitting && step < 3 && (
               <Button onClick={handleNext} disabled={!canNext()}>
                 Tiếp theo <ChevronRight size={16} />
               </Button>
-            ) : (
+            )}
+            {!submitting && step === 3 && (
               <Button onClick={handleSubmit} disabled={submitting}>
-                {submitting ? <Spinner size={16} /> : <Send size={16} />}
-                Gửi Sáng kiến
+                <Send size={16} /> Gửi Sáng kiến
               </Button>
+            )}
+            {!submitting && step === 4 && (
+              <Link href="/">
+                <Button>Về Tổng quan</Button>
+              </Link>
             )}
           </div>
         </div>

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getUserFromHeaders } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const user = await getUserFromHeaders();
   const { searchParams } = new URL(request.url);
   const keyword = searchParams.get("keyword") || "";
   const blockId = searchParams.get("blockId") || "";
@@ -9,16 +11,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const where: Record<string, unknown> = { status: "PUBLISHED" };
-
     if (keyword) {
       where.OR = [
         { title: { contains: keyword } },
         { executiveSummary: { contains: keyword } },
       ];
     }
-
     if (blockId) {
-      where.classifications = { some: { blockId } };
+      where.classifications = { some: { block: { code: blockId } } };
     }
 
     const innovations = await prisma.innovation.findMany({
@@ -28,12 +28,12 @@ export async function GET(request: NextRequest) {
         author: { select: { fullName: true } },
         screenings: { select: { normalisedScore: true }, orderBy: { createdAt: "desc" }, take: 1 },
         _count: { select: { upvotes: true, comments: true } },
+        upvotes: { where: { userId: user.userId }, select: { id: true } },
       },
       orderBy: sortBy === "most_upvotes"
         ? { upvotes: { _count: "desc" } }
         : sortBy === "highest_score"
-          ? undefined
-          : { publishedAt: "desc" },
+          ? undefined : { publishedAt: "desc" },
     });
 
     const mapped = innovations.map((i) => ({
@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       commentCount: i._count.comments,
       authorName: i.author.fullName,
       publishedAt: i.publishedAt?.toISOString() || i.createdAt.toISOString(),
+      isUpvoted: i.upvotes.length > 0,
     }));
 
     if (sortBy === "highest_score") {

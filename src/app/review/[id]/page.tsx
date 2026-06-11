@@ -95,7 +95,7 @@ export default function ReviewDetailPage() {
           <Link href="/review"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono text-primary-light">{data.innovationCode}</span>
+              <span className="text-xs font-mono text-brand">{data.innovationCode}</span>
               <Badge>{data.decision === "PENDING" ? "Chờ duyệt" : data.decision}</Badge>
             </div>
             <h1 className="text-2xl font-bold text-text-primary">{data.innovationTitle}</h1>
@@ -147,10 +147,10 @@ export default function ReviewDetailPage() {
                   <p className="text-xs text-text-muted">/100</p>
                 </div>
                 {data.scores.map((s) => (
-                  <div key={s.criterion} className="py-2 border-t border-navy-700">
+                  <div key={s.criterion} className="py-2 border-t border-border">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-text-primary">{s.criterion}</span>
-                      <span className="text-xs font-bold text-primary-light">{s.score}</span>
+                      <span className="text-xs font-bold text-brand">{s.score}</span>
                     </div>
                     {s.reasoning && <p className="text-xs text-text-muted mt-1">{s.reasoning}</p>}
                   </div>

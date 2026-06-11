@@ -8,7 +8,7 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant = "default", ...props }, ref) => {
     const variants: Record<string, string> = {
-      default: "bg-navy-700 text-text-secondary",
+      default: "bg-surface-alt text-text-secondary",
       success: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
       warning: "bg-amber-500/15 text-amber-400 border-amber-500/30",
       danger: "bg-red-500/15 text-red-400 border-red-500/30",
@@ -19,7 +19,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={cn(
-          "inline-flex items-center gap-1 rounded-md border border-navy-700 px-2.5 py-0.5 text-xs font-medium",
+          "inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-0.5 text-xs font-medium",
           variants[variant],
           className
         )}

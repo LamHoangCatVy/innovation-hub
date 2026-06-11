@@ -107,7 +107,7 @@ export default function EditFrameworkPage() {
               onClick={() => setIsActive(!isActive)}
               className={cn(
                 "px-3 py-1 rounded text-xs font-medium border cursor-pointer transition-all",
-                isActive ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400" : "border-navy-600 bg-navy-800 text-text-muted"
+                isActive ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400" : "border-border bg-surface-alt text-text-muted"
               )}
             >
               {isActive ? "Active" : "Inactive"}
@@ -121,7 +121,7 @@ export default function EditFrameworkPage() {
             </div>
             <div className="space-y-3">
               {criteria.map((c, i) => (
-                <div key={i} className="flex gap-3 items-start p-4 rounded-lg bg-navy-900 border border-navy-700">
+                <div key={i} className="flex gap-3 items-start p-4 rounded-lg bg-surface-alt border border-border">
                   <div className="flex-1 space-y-2">
                     <Input placeholder="Tên tiêu chí" value={c.name} onChange={(e) => updateCriterion(i, "name", e.target.value)} />
                     <Input placeholder="Mô tả" value={c.description} onChange={(e) => updateCriterion(i, "description", e.target.value)} />
@@ -143,7 +143,7 @@ export default function EditFrameworkPage() {
               {["RB", "CMB", "CIB", "Treasury", "IB", "Card", "Bancass", "Digital", "WM", "FI", "Ops", "Risk", "Legal", "Fin", "HR", "IT", "Strategy", "Marketing", "Audit", "Admin"].map((code) => (
                 <button key={code} onClick={() => toggleBlock(code)}
                   className={cn("px-2 py-1.5 rounded text-xs font-medium border transition-all cursor-pointer",
-                    blockMapping.includes(code) ? "border-primary bg-primary/15 text-primary-light" : "border-navy-700 text-text-muted hover:border-navy-600")}
+                    blockMapping.includes(code) ? "border-brand bg-brand/15 text-brand" : "border-border text-text-muted hover:border-brand/30")}
                 >{code}</button>
               ))}
             </div>

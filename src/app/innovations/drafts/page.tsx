@@ -7,6 +7,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { FileText, Trash2, Edit3 } from "lucide-react";
+import { useUser, UserIdentity } from "@/lib/user-context";
+
+function buildUserHeaders(u: UserIdentity): Record<string, string> {
+  return { "x-vpb-user": JSON.stringify({ userId: u.id, username: u.username, fullName: u.fullName, role: u.role, blockCode: u.blockCode }) };
+}
 
 interface Draft {
   id: string;
@@ -19,13 +24,14 @@ export default function DraftsPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const { user } = useUser();
 
   useEffect(() => {
-    fetch("/api/innovations/drafts")
+    fetch("/api/innovations/drafts", { headers: buildUserHeaders(user) })
       .then((r) => r.json())
       .then(setDrafts)
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   const handleDelete = async (id: string) => {
     await fetch(`/api/innovations/drafts?id=${id}`, { method: "DELETE" });

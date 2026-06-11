@@ -1,9 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getUserFromHeaders } from "@/lib/auth";
+import { headers } from "next/headers";
 
 export async function GET() {
   try {
+    const user = await getUserFromHeaders();
+    const headersList = await headers();
+    const reviewBlock = headersList.get("x-vpb-review-block") || user.blockCode;
+
+    const where: Record<string, unknown> = {};
+    if (reviewBlock !== "ALL") {
+      const block = await prisma.block.findUnique({ where: { code: reviewBlock } });
+      if (block) {
+        where.blockId = block.id;
+      }
+    }
+
     const reviews = await prisma.review.findMany({
+      where,
       include: {
         innovation: {
           select: {

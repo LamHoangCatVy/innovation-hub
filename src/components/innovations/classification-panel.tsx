@@ -59,18 +59,18 @@ export function ClassificationPanel({
           className={cn(
             "w-full p-4 rounded-lg border-2 text-left transition-all duration-200 cursor-pointer mb-4",
             isBankWide
-              ? "border-gold bg-gold/10 text-gold"
-              : "border-navy-700 hover:border-navy-600 text-text-secondary"
+              ? "border-brand bg-brand/10 text-brand"
+              : "border-border hover:border-brand/30 text-text-secondary"
           )}
         >
           <div className="flex items-center gap-3">
             <div
               className={cn(
                 "w-5 h-5 rounded flex items-center justify-center border-2 transition-colors",
-                isBankWide ? "border-gold bg-gold" : "border-navy-600"
+                isBankWide ? "border-brand bg-brand" : "border-border"
               )}
             >
-              {isBankWide && <Check size={12} className="text-navy-950" />}
+              {isBankWide && <Check size={12} className="text-white" />}
             </div>
             <div>
               <p className="font-medium">Tác động toàn ngân hàng (Bank-wide Impact)</p>
@@ -142,17 +142,17 @@ function BlockSection({
               className={cn(
                 "flex items-center gap-3 p-3 rounded-lg border text-left transition-all duration-200 cursor-pointer",
                 isSelected && isPrimary
-                  ? "border-primary bg-primary/15 text-primary-light"
+                  ? "border-brand bg-brand/15 text-brand"
                   : isSelected
-                    ? "border-navy-600 bg-navy-800/50 text-text-secondary"
-                    : "border-navy-800 hover:border-navy-600 text-text-muted",
+                    ? "border-border bg-surface-alt/50 text-text-secondary"
+                    : "border-border hover:border-brand/30 text-text-muted",
                 disabled && "opacity-60 cursor-not-allowed"
               )}
             >
               <div
                 className={cn(
                   "w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors",
-                  isSelected ? "border-primary bg-primary" : "border-navy-600"
+                  isSelected ? "border-brand bg-brand" : "border-border"
                 )}
               >
                 {isSelected && <Check size={10} className="text-white" />}
@@ -162,7 +162,7 @@ function BlockSection({
                 <p className="text-[10px] opacity-60">{block.code}</p>
               </div>
               {isPrimary && (
-                <span className="ml-auto text-[10px] bg-primary/20 text-primary-light px-1.5 py-0.5 rounded">
+                <span className="ml-auto text-[10px] bg-brand/20 text-brand px-1.5 py-0.5 rounded">
                   Chính
                 </span>
               )}

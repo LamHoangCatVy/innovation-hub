@@ -8,36 +8,39 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ArrowLeft, Brain, Star } from "lucide-react";
+import { ArrowLeft, Brain, Star, Edit3, AlertTriangle } from "lucide-react";
 
-interface InnovationDetail {
-  id: string;
-  code: string;
-  title: string;
-  executiveSummary: string;
-  painPoints: string;
-  detailedSolution: string | null;
-  status: string;
-  version: number;
-  isBankWide: boolean;
-  primaryBlock: { code: string; name: string } | null;
-  classifications: { block: { code: string; name: string } }[];
-  author: { fullName: string; email: string };
-  screenings: {
+  interface InnovationDetail {
     id: string;
-    normalisedScore: number | null;
-    framework: { name: string };
-    createdAt: string;
-    scores: { score: number; reasoning: string | null; criterion: { name: string } }[];
-  }[];
-  reviews: {
-    decision: string;
-    feedbackNotes: string | null;
-    block: { code: string; name: string };
-    reviewer: { fullName: string };
-    reviewedAt: string | null;
-  }[];
-}
+    code: string;
+    title: string;
+    executiveSummary: string;
+    painPoints: string;
+    detailedSolution: string | null;
+    status: string;
+    version: number;
+    isBankWide: boolean;
+    primaryBlock: { code: string; name: string } | null;
+    classifications: { block: { code: string; name: string } }[];
+    author: { fullName: string; email: string };
+    logs: { action: string; payload: string | null; createdAt: string }[];
+    screenings: {
+      id: string;
+      normalisedScore: number | null;
+      framework: { name: string };
+      createdAt: string;
+      scores: { score: number; reasoning: string | null; criterion: { name: string } }[];
+    }[];
+    reviews: {
+      decision: string;
+      feedbackNotes: string | null;
+      internalNotes: string | null;
+      block: { code: string; name: string };
+      reviewer: { fullName: string };
+      reviewedAt: string | null;
+    }[];
+    _count: { upvotes: number; comments: number };
+  }
 
 export default function InnovationDetailPage() {
   const params = useParams();
@@ -81,6 +84,8 @@ export default function InnovationDetailPage() {
 
   const latestScreening = data.screenings?.[data.screenings.length - 1];
   const statusInfo = statusMap[data.status] || statusMap.DRAFT;
+  const feedbackLog = data.logs?.find((l) => l.action === "FEEDBACK_AUTO");
+  const haveReviewFeedback = data.reviews?.some((r) => r.feedbackNotes);
 
   return (
     <DashboardLayout>
@@ -89,16 +94,54 @@ export default function InnovationDetailPage() {
           <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono text-primary-light">{data.code}</span>
+              <span className="text-xs font-mono text-brand">{data.code}</span>
               <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
               {data.isBankWide && <Badge variant="warning">Toàn ngân hàng</Badge>}
+              {data.version > 1 && <Badge>V{data.version}</Badge>}
             </div>
             <h1 className="text-2xl font-bold text-text-primary">{data.title}</h1>
             <p className="text-sm text-text-muted mt-1">
-              Tác giả: {data.author.fullName} &middot; Khối chính: {data.primaryBlock?.name || "N/A"} &middot; Phiên bản: V{data.version}
+              Tác giả: {data.author.fullName} &middot; Khối chính: {data.primaryBlock?.name || "N/A"}
             </p>
           </div>
         </div>
+
+        {data.status === "MODIFICATION_REQUESTED" && (
+          <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-amber-400" />
+              <span className="font-semibold text-amber-400">Cần bổ sung thông tin</span>
+            </div>
+            {feedbackLog?.payload && (() => {
+              try {
+                const p = JSON.parse(feedbackLog.payload);
+                return (
+                  <ul className="space-y-1">
+                    {p.completeness?.missing?.map((m: string, i: number) => (
+                      <li key={i} className="text-sm text-amber-400 flex items-start gap-2">
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />{m}
+                      </li>
+                    ))}
+                  </ul>
+                );
+              } catch { return null; }
+            })()}
+            {haveReviewFeedback && (
+              <div className="mt-2 pt-2 border-t border-amber-500/20">
+                {data.reviews.filter((r) => r.feedbackNotes).map((r, i) => (
+                  <div key={i} className="text-sm text-amber-400 mt-1">
+                    <span className="font-medium">{r.block.code} PIC:</span> {r.feedbackNotes}
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link href={`/innovations/new?edit=${data.id}`}>
+              <Button size="sm">
+                <Edit3 size={14} /> Chỉnh sửa sáng kiến
+              </Button>
+            </Link>
+          </div>
+        )}
 
         <div className="grid gap-6 md:grid-cols-3">
           <div className="md:col-span-2 space-y-6">
@@ -144,7 +187,7 @@ export default function InnovationDetailPage() {
                     <p className="text-xs text-text-muted">/100 - {latestScreening.framework.name}</p>
                   </div>
                   {latestScreening.scores.map((s) => (
-                    <div key={s.criterion.name} className="flex items-center justify-between py-1.5 border-t border-navy-700">
+                    <div key={s.criterion.name} className="flex items-center justify-between py-1.5 border-t border-border">
                       <span className="text-xs text-text-secondary">{s.criterion.name}</span>
                       <span className="text-xs font-medium text-text-primary">{s.score}</span>
                     </div>
@@ -169,7 +212,7 @@ export default function InnovationDetailPage() {
                 <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">Kết quả phê duyệt</h3>
                 <div className="space-y-2">
                   {data.reviews.map((r, i) => (
-                    <div key={i} className="p-2 rounded bg-navy-900/50">
+                    <div key={i} className="p-2 rounded bg-surface-alt/50">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-text-primary">{r.block.code}</span>
                         <Badge variant={r.decision === "APPROVED" ? "success" : r.decision === "REJECTED" ? "danger" : "default"}>

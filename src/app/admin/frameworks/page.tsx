@@ -86,7 +86,7 @@ export default function FrameworksPage() {
                     )}
                     <div className="flex items-center gap-4 mt-3">
                       <span className="text-xs text-text-muted">
-                        Công thức: <code className="text-primary-light bg-primary/10 px-1.5 py-0.5 rounded">{fw.formula}</code>
+                        Công thức: <code className="text-brand bg-brand/10 px-1.5 py-0.5 rounded">{fw.formula}</code>
                       </span>
                       <span className="text-xs text-text-muted">{fw.criteriaCount} tiêu chí</span>
                       <span className="text-xs text-text-muted">{fw.blockCount} khối áp dụng</span>

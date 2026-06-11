@@ -16,6 +16,7 @@ export async function GET(
         screenings: { include: { scores: { include: { criterion: true } }, framework: true } },
         reviews: { include: { reviewer: { select: { fullName: true } }, block: { select: { code: true, name: true } } } },
         _count: { select: { upvotes: true, comments: true } },
+        logs: { orderBy: { createdAt: "desc" }, take: 10 },
       },
     });
     if (!innovation) return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -14,13 +14,13 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Tổng sáng kiến", value: "0", icon: Lightbulb, color: "text-primary-light" },
+            { label: "Tổng sáng kiến", value: "0", icon: Lightbulb, color: "text-brand" },
             { label: "Đã phê duyệt", value: "0", icon: CheckCircle2, color: "text-emerald-400" },
             { label: "Đang xử lý", value: "0", icon: TrendingUp, color: "text-amber-400" },
             { label: "Người dùng", value: "0", icon: Users, color: "text-purple-400" },
           ].map((stat, i) => (
             <Card key={i} className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-navy-900 border border-navy-700 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-surface-alt border border-border flex items-center justify-center">
                 <stat.icon size={20} className={stat.color} />
               </div>
               <div>

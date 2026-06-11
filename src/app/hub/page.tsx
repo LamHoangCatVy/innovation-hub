@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Globe, Search, MessageSquare, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUser, UserIdentity } from "@/lib/user-context";
+
+function buildUserHeaders(u: UserIdentity): Record<string, string> {
+  return { "x-vpb-user": JSON.stringify({ userId: u.id, username: u.username, fullName: u.fullName, role: u.role, blockCode: u.blockCode }) };
+}
 
 interface InnovationHubItem {
   id: string;
@@ -27,6 +32,7 @@ export default function HubPage() {
   const [keyword, setKeyword] = useState("");
   const [blockFilter, setBlockFilter] = useState("");
   const [sortBy, setSortBy] = useState<"latest" | "highest_score" | "most_upvotes">("latest");
+  const { user } = useUser();
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -35,12 +41,12 @@ export default function HubPage() {
     if (blockFilter) params.set("blockId", blockFilter);
     params.set("sortBy", sortBy);
     try {
-      const res = await fetch(`/api/hub?${params}`);
+      const res = await fetch(`/api/hub?${params}`, { headers: buildUserHeaders(user) });
       setItems(await res.json());
     } finally {
       setLoading(false);
     }
-  }, [keyword, blockFilter, sortBy]);
+  }, [keyword, blockFilter, sortBy, user]);
 
   const initialFetchDone = useRef(false);
 
@@ -53,7 +59,10 @@ export default function HubPage() {
   }, []);
 
   const handleUpvote = async (id: string) => {
-    await fetch(`/api/hub/${id}/upvote`, { method: "POST" });
+    await fetch(`/api/hub/${id}/upvote`, {
+      method: "POST",
+      headers: buildUserHeaders(user),
+    });
     fetchItems();
   };
 
@@ -78,7 +87,7 @@ export default function HubPage() {
           <select
             value={blockFilter}
             onChange={(e) => setBlockFilter(e.target.value)}
-            className="bg-navy-800 border border-navy-700 rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-primary"
+            className="bg-surface-alt border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand"
           >
             <option value="">Tất cả khối</option>
             <option value="RB">RB - Bán lẻ</option>
@@ -92,14 +101,14 @@ export default function HubPage() {
             <option value="Legal">Legal - Pháp chế</option>
             <option value="Digital">Digital - NH Số</option>
           </select>
-          <div className="flex rounded-lg border border-navy-700 overflow-hidden">
+          <div className="flex rounded-lg border border-border overflow-hidden">
             {(["latest", "highest_score", "most_upvotes"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSortBy(s)}
                 className={cn(
                   "px-3 py-2.5 text-xs font-medium transition-colors cursor-pointer",
-                  sortBy === s ? "bg-primary/20 text-primary-light" : "text-text-muted hover:text-text-secondary"
+                  sortBy === s ? "bg-brand/20 text-brand" : "text-text-muted hover:text-text-secondary"
                 )}
               >
                 {s === "latest" ? "Mới nhất" : s === "highest_score" ? "Điểm cao" : "Upvote"}
@@ -118,23 +127,23 @@ export default function HubPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
-              <Card key={item.id} className="flex flex-col justify-between hover:border-navy-600 transition-all cursor-pointer group">
+              <Card key={item.id} className="flex flex-col justify-between hover:border-brand/30 transition-all cursor-pointer group">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-mono text-primary-light">{item.code}</span>
+                    <span className="text-[10px] font-mono text-brand">{item.code}</span>
                     <span className="text-[10px] text-text-muted">{item.primaryBlockName}</span>
                   </div>
-                  <h3 className="font-semibold text-text-primary line-clamp-2 group-hover:text-primary-light transition-colors">
+                  <h3 className="font-semibold text-text-primary line-clamp-2 group-hover:text-brand transition-colors">
                     {item.title}
                   </h3>
                   <p className="text-sm text-text-muted mt-2 line-clamp-3">{item.executiveSummary}</p>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-navy-700 flex items-center justify-between">
+                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => handleUpvote(item.id)}
-                      className="flex items-center gap-1 text-text-muted hover:text-primary-light transition-colors cursor-pointer"
+                      className="flex items-center gap-1 text-text-muted hover:text-brand transition-colors cursor-pointer"
                     >
                       <ThumbsUp size={14} />
                       <span className="text-xs">{item.upvoteCount}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,15 +28,15 @@ export function InnovationInputForm({ onDataChange, initialData }: InnovationInp
 
   const { saveStatus, lastSavedAt } = useAutoSave(form, "/api/innovations/drafts");
 
+  useEffect(() => {
+    onDataChange(form);
+  }, [form, onDataChange]);
+
   const update = useCallback(
     (field: keyof FormData, value: string) => {
-      setForm((prev) => {
-        const next = { ...prev, [field]: value };
-        onDataChange(next);
-        return next;
-      });
+      setForm((prev) => ({ ...prev, [field]: value }));
     },
-    [onDataChange]
+    []
   );
 
   return (
@@ -108,7 +108,7 @@ export function InnovationInputForm({ onDataChange, initialData }: InnovationInp
 
       <div>
         <Label>Tài liệu đính kèm (PDF/XLSX/PPTX, tối đa 20MB)</Label>
-        <div className="mt-2 border-2 border-dashed border-navy-700 rounded-lg p-8 text-center hover:border-navy-600 transition-colors cursor-pointer">
+        <div className="mt-2 border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-brand/30 transition-colors cursor-pointer">
           <p className="text-text-muted text-sm">
             Kéo thả file vào đây hoặc click để chọn file
           </p>

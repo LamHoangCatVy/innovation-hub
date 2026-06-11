@@ -6,7 +6,7 @@ const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     return (
       <div
         ref={ref}
-        className={cn("glass-card p-6 hover:border-navy-600 transition-colors duration-200", className)}
+        className={cn("glass-card p-6 hover:border-brand/30 transition-colors duration-200", className)}
         {...props}
       />
     );
