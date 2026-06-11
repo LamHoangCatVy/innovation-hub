@@ -23,7 +23,7 @@ export async function GET(
       include: {
         primaryBlock: { select: { code: true, name: true } },
         classifications: { include: { block: { select: { code: true, name: true } } } },
-        author: { select: { fullName: true, email: true } },
+        author: { select: { id: true, fullName: true, email: true } },
         screenings: { include: { scores: { include: { criterion: true } }, framework: true } },
         reviews: { include: { reviewer: { select: { fullName: true } }, block: { select: { code: true, name: true } } } },
         _count: { select: { upvotes: true, comments: true } },

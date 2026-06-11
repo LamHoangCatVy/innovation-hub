@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ArrowLeft, Brain, Star, Edit3, AlertTriangle } from "lucide-react";
 import { Discussion } from "@/components/innovations/discussion";
+import { useUser } from "@/lib/user-context";
 
   interface InnovationDetail {
     id: string;
@@ -22,7 +23,7 @@ import { Discussion } from "@/components/innovations/discussion";
     isBankWide: boolean;
     primaryBlock: { code: string; name: string } | null;
     classifications: { block: { code: string; name: string } }[];
-    author: { fullName: string; email: string };
+    author: { id: string; fullName: string; email: string };
     logs: { action: string; payload: string | null; createdAt: string }[];
     screenings: {
       id: string;
@@ -45,6 +46,7 @@ import { Discussion } from "@/components/innovations/discussion";
 export default function InnovationDetailPage() {
   const params = useParams();
   const innovationId = params.id as string;
+  const { user } = useUser();
   const [data, setData] = useState<InnovationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [screening, setScreening] = useState(false);
@@ -86,12 +88,15 @@ export default function InnovationDetailPage() {
   const statusInfo = statusMap[data.status] || statusMap.DRAFT;
   const feedbackLog = data.logs?.find((l) => l.action === "FEEDBACK_AUTO");
   const haveReviewFeedback = data.reviews?.some((r) => r.feedbackNotes);
+  const canEdit =
+    (data.status === "DRAFT" || data.status === "MODIFICATION_REQUESTED") &&
+    (data.author.id === user.id || user.role === "ADMIN");
 
   return (
     <>
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
+        <div className="flex items-start gap-4">
+          <Link href="/innovations"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-mono text-brand">{data.code}</span>
@@ -104,6 +109,14 @@ export default function InnovationDetailPage() {
               Tác giả: {data.author.fullName} &middot; Khối chính: {data.primaryBlock?.name || "N/A"}
             </p>
           </div>
+          {canEdit && (
+            <Link href={`/innovations/new?edit=${data.id}`}>
+              <Button size="sm" className="whitespace-nowrap">
+                <Edit3 size={14} />
+                {data.status === "MODIFICATION_REQUESTED" ? "Sửa & gửi lại" : "Tiếp tục sửa"}
+              </Button>
+            </Link>
+          )}
         </div>
 
         {data.status === "MODIFICATION_REQUESTED" && (
@@ -135,11 +148,13 @@ export default function InnovationDetailPage() {
                 ))}
               </div>
             )}
-            <Link href={`/innovations/new?edit=${data.id}`}>
-              <Button size="sm">
-                <Edit3 size={14} /> Chỉnh sửa sáng kiến
-              </Button>
-            </Link>
+            {canEdit && (
+              <Link href={`/innovations/new?edit=${data.id}`}>
+                <Button size="sm">
+                  <Edit3 size={14} /> Sửa & gửi lại
+                </Button>
+              </Link>
+            )}
           </div>
         )}
 

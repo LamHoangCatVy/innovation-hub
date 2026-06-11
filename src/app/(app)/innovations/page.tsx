@@ -387,9 +387,9 @@ export default function MyIdeasPage() {
                     </>
                   ) : item.status === "DRAFT" || item.status === "MODIFICATION_REQUESTED" ? (
                     <Link href={`/innovations/new?edit=${item.id}`}>
-                      <Button variant="outline" size="sm">
-                        <Send size={14} />
-                        {item.status === "DRAFT" ? "Tiếp tục" : "Gửi lại"}
+                      <Button variant="outline" size="sm" className="whitespace-nowrap">
+                        {item.status === "DRAFT" ? <Send size={14} /> : <Edit3 size={14} />}
+                        {item.status === "DRAFT" ? "Tiếp tục" : "Sửa & gửi lại"}
                       </Button>
                     </Link>
                   ) : (
