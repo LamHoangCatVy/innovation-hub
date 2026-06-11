@@ -3,11 +3,11 @@
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { YumAIPanel } from "./yumai-panel";
+import { OnboardingGuide } from "./onboarding-guide";
 import { ReactNode, useState } from "react";
-import { UserProvider, useUser } from "@/lib/user-context";
+import { UserProvider } from "@/lib/user-context";
 
 function DashboardInner({ children }: { children: ReactNode }) {
-  const { user } = useUser();
   const [yumaiOpen, setYumaiOpen] = useState(false);
 
   return (
@@ -17,7 +17,8 @@ function DashboardInner({ children }: { children: ReactNode }) {
         <Header />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
-      {user.role === "ADMIN" && <YumAIPanel open={yumaiOpen} onToggle={() => setYumaiOpen(!yumaiOpen)} />}
+      <YumAIPanel open={yumaiOpen} onToggle={() => setYumaiOpen(!yumaiOpen)} />
+      <OnboardingGuide />
     </div>
   );
 }

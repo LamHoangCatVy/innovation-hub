@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 
 export type Role = "ADMIN" | "STAFF";
 
@@ -41,43 +41,44 @@ const ADMIN_IDENTITY: UserIdentity = {
 
 function getRandomStaff(): UserIdentity {
   const pool = STAFF_POOL[Math.floor(Math.random() * STAFF_POOL.length)];
-  return {
-    ...pool,
-    id: `staff-${pool.username}`,
-  };
+  return { ...pool, id: `staff-${pool.username}` };
 }
 
 interface UserContextType {
   user: UserIdentity;
   setRole: (role: Role) => void;
   switchStaff: () => void;
+  ready: boolean;
 }
 
 const UserContext = createContext<UserContextType>({
   user: ADMIN_IDENTITY,
   setRole: () => {},
   switchStaff: () => {},
+  ready: false,
 });
 
 export function useUser() {
   return useContext(UserContext);
 }
 
-function loadUserFromStorage(): UserIdentity {
-  try {
-    const saved = localStorage.getItem("vpb_user");
-    if (saved) {
-      const parsed = JSON.parse(saved) as UserIdentity;
-      if (parsed.role === "ADMIN" || parsed.role === "STAFF") {
-        return parsed;
-      }
-    }
-  } catch {}
-  return ADMIN_IDENTITY;
-}
-
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserIdentity>(loadUserFromStorage);
+  const [user, setUser] = useState<UserIdentity>(ADMIN_IDENTITY);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("vpb_user");
+      if (saved) {
+        const parsed = JSON.parse(saved) as UserIdentity;
+        if (parsed.role === "ADMIN" || parsed.role === "STAFF") {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setUser(parsed);
+        }
+      }
+    } catch {}
+    setReady(true);
+  }, []);
 
   const persist = useCallback((u: UserIdentity) => {
     setUser(u);
@@ -85,19 +86,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setRole = useCallback((role: Role) => {
-    if (role === "ADMIN") {
-      persist(ADMIN_IDENTITY);
-    } else {
-      persist(getRandomStaff());
-    }
+    if (role === "ADMIN") persist(ADMIN_IDENTITY);
+    else persist(getRandomStaff());
   }, [persist]);
 
-  const switchStaff = useCallback(() => {
-    persist(getRandomStaff());
-  }, [persist]);
+  const switchStaff = useCallback(() => persist(getRandomStaff()), [persist]);
 
   return (
-    <UserContext.Provider value={{ user, setRole, switchStaff }}>
+    <UserContext.Provider value={{ user, setRole, switchStaff, ready }}>
       {children}
     </UserContext.Provider>
   );
