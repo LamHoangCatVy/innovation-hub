@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,7 @@ import { useUser } from "@/lib/user-context";
 
 export default function InnovationDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const innovationId = params.id as string;
   const { user } = useUser();
   const [data, setData] = useState<InnovationDetail | null>(null);
@@ -96,7 +97,9 @@ export default function InnovationDetailPage() {
     <>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-start gap-4">
-          <Link href="/innovations"><Button variant="ghost" size="sm"><ArrowLeft size={16} /></Button></Link>
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft size={16} />
+          </Button>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-mono text-brand">{data.code}</span>

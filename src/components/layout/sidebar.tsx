@@ -26,10 +26,10 @@ import { useUser } from "@/lib/user-context";
   }
 
   const NAV_ITEMS: NAV_ITEM[] = [
+  { href: "/hub", label: "Nhà Chung", icon: Globe, tour: "hub" },
   { href: "/innovations/new", label: "Đề xuất mới", icon: Lightbulb, tour: "new-idea" },
   { href: "/innovations", label: "Ý tưởng của tôi", icon: FileText },
   { href: "/academy", label: "Innovation Academy", icon: GraduationCap },
-  { href: "/hub", label: "Nhà Chung", icon: Globe, tour: "hub" },
 ];
 
 const PIC_ADMIN_ITEMS: NAV_ITEM[] = [
