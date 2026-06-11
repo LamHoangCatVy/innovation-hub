@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { BANK_BLOCKS, FRAMEWORK_BUSINESS_RICE, FRAMEWORK_OPERATIONAL_RISK } from "../src/lib/constants";
+import { seedMockInnovations } from "./mock-innovation-data";
 
 const prisma = new PrismaClient();
 
@@ -170,6 +171,7 @@ async function main() {
   });
 
   console.log("Sample innovation created:", sample.title);
+  await seedMockInnovations(prisma);
   console.log("Seed completed!");
 }
 

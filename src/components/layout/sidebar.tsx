@@ -40,7 +40,7 @@ const ADMIN_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
   { href: "/admin/innovations", label: "Quản lý Sáng kiến", icon: LayoutDashboard },
   { href: "/admin/frameworks", label: "Framework chấm điểm", icon: Shuffle },
-  { href: "/admin/frameworks/new", label: "Thêm Framework", icon: Settings },
+  { href: "/admin/settings", label: "Cấu hình hệ thống", icon: Settings },
 ];
 
 export function Sidebar() {
