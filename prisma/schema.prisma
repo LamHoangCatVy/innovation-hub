@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  category  String   @default("BUSINESS")
+  picName   String?
+  picEmail  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  primaryInnovations    Innovation[]        @relation("PrimaryBlock")
+  classifications       InnovationBlock[]   @relation("Block")
+  frameworkMappings     BlockFrameworkMapping[]
+  reviews               Review[]
+  users                 User[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  fullName  String
+  blockId   String?
+  role      String   @default("STAFF")
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  block         Block?          @relation(fields: [blockId], references: [id])
+  createdIdeas  Innovation[]    @relation("Author")
+  drafts        InnovationDraft[]
+  reviews       Review[]
+  comments      InnovationComment[]
+  upvotes       InnovationUpvote[]
+}
+
+model Framework {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  formula     String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  criteria         FrameworkCriterion[]
+  blockMappings    BlockFrameworkMapping[]
+  screeningResults InnovationScreening[]
+}
+
+model FrameworkCriterion {
+  id          String   @id @default(uuid())
+  frameworkId String
+  name        String
+  description String
+  weight      Float    @default(1.0)
+  minScore    Int      @default(1)
+  maxScore    Int      @default(5)
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  framework Framework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  scores    CriterionScore[]
+
+  @@index([frameworkId])
+}
+
+model BlockFrameworkMapping {
+  id          String   @id @default(uuid())
+  blockId     String
+  frameworkId String
+  createdAt   DateTime @default(now())
+
+  block     Block     @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  framework Framework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+
+  @@unique([blockId, frameworkId])
+  @@index([blockId])
+  @@index([frameworkId])
+}
+
+model Innovation {
+  id                String   @id @default(uuid())
+  code              String   @unique
+  title             String
+  executiveSummary  String
+  painPoints        String
+  detailedSolution  String?
+  status            String   @default("DRAFT")
+  version           Int      @default(1)
+  isBankWide        Boolean  @default(false)
+  authorId          String
+  primaryBlockId    String?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  publishedAt       DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  author          User                @relation("Author", fields: [authorId], references: [id])
+  primaryBlock    Block?              @relation("PrimaryBlock", fields: [primaryBlockId], references: [id])
+  classifications InnovationBlock[]
+  attachments     Attachment[]
+  screenings      InnovationScreening[]
+  reviews         Review[]
+  comments        InnovationComment[]
+  upvotes         InnovationUpvote[]
+  logs            InnovationLog[]
+  drafts          InnovationDraft[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([primaryBlockId])
+}
+
+model InnovationDraft {
+  id            String   @id @default(uuid())
+  userId        String
+  innovationId  String?
+  title         String?
+  executiveSummary String?
+  painPoints    String?
+  detailedSolution String?
+  primaryBlockId String?
+  isBankWide    Boolean  @default(false)
+  savedAt       DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  innovation Innovation? @relation(fields: [innovationId], references: [id])
+
+  @@index([userId])
+}
+
+model InnovationBlock {
+  id            String   @id @default(uuid())
+  innovationId  String
+  blockId       String
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  innovation Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  block      Block      @relation("Block", fields: [blockId], references: [id], onDelete: Cascade)
+
+  @@unique([innovationId, blockId])
+  @@index([innovationId])
+  @@index([blockId])
+}
+
+model Attachment {
+  id           String   @id @default(uuid())
+  innovationId String
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  fileType     String
+  virusScanned Boolean  @default(false)
+  uploadedAt   DateTime @default(now())
+
+  innovation Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+
+  @@index([innovationId])
+}
+
+model InnovationScreening {
+  id              String   @id @default(uuid())
+  innovationId    String
+  frameworkId     String
+  promptTokens    Int?
+  completionTokens Int?
+  rawResponse     String?
+  normalisedScore Float?
+  screenedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  innovation Innovation      @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  framework  Framework       @relation(fields: [frameworkId], references: [id])
+  scores     CriterionScore[]
+
+  @@index([innovationId])
+}
+
+model CriterionScore {
+  id           String   @id @default(uuid())
+  screeningId  String
+  criterionId  String
+  score        Float
+  reasoning    String?
+  createdAt    DateTime @default(now())
+
+  screening InnovationScreening @relation(fields: [screeningId], references: [id], onDelete: Cascade)
+  criterion FrameworkCriterion  @relation(fields: [criterionId], references: [id])
+
+  @@index([screeningId])
+}
+
+model Review {
+  id             String   @id @default(uuid())
+  innovationId   String
+  reviewerId     String
+  blockId        String
+  decision       String   @default("PENDING")
+  internalNotes  String?
+  feedbackNotes  String?
+  reviewedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  innovation Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  reviewer   User       @relation(fields: [reviewerId], references: [id])
+  block      Block      @relation(fields: [blockId], references: [id])
+
+  @@unique([innovationId, blockId])
+  @@index([innovationId])
+  @@index([reviewerId])
+}
+
+model InnovationComment {
+  id            String   @id @default(uuid())
+  innovationId  String
+  authorId      String
+  content       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  innovation Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  author     User       @relation(fields: [authorId], references: [id])
+
+  @@index([innovationId])
+}
+
+model InnovationUpvote {
+  id           String   @id @default(uuid())
+  innovationId String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  innovation Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([innovationId, userId])
+  @@index([innovationId])
+}
+
+model InnovationLog {
+  id           String   @id @default(uuid())
+  innovationId String
+  action       String
+  payload      String?
+  performedBy  String?
+  createdAt    DateTime @default(now())
+
+  innovation Innovation @relation(fields: [innovationId], references: [id], onDelete: Cascade)
+
+  @@index([innovationId])
+}
