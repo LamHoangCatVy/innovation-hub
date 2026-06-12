@@ -4,11 +4,18 @@ export interface CriterionScoreResult {
   reasoning: string;
 }
 
+/** A Socratic, criterion-tagged prompt that guides the author to a weak spot. */
+export interface ImprovementQuestion {
+  criterion: string;
+  question: string;
+}
+
 export interface ScreeningResult {
   proposal_id: string;
   applied_framework: string;
   criteria_scores: CriterionScoreResult[];
   final_normalised_score: number;
+  improvement_questions?: ImprovementQuestion[];
 }
 
 export function calculateRICEScore(scores: CriterionScoreResult[]): number {

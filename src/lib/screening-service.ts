@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { runLLMScreening } from "@/lib/deepseek";
-import { computeQualityScore } from "@/lib/scoring";
+import { computeQualityScore, type ImprovementQuestion } from "@/lib/scoring";
+import { buildQuestions } from "@/lib/screening-questions";
 import { createNotification } from "@/lib/notifications";
 import { SCREENING_PASS_THRESHOLD } from "@/lib/constants";
 import { getNumberSetting, SETTING_KEYS } from "@/lib/settings";
@@ -99,6 +100,7 @@ interface ScreeningOutput {
   screeningMethod: "llm" | "rule";
   completeness: CompletenessResult;
   status: string;
+  questions: ImprovementQuestion[];
 }
 
 export async function autoScreenInnovation(innovationId: string): Promise<ScreeningOutput> {
@@ -152,11 +154,13 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
   let rawResponse = "";
   let promptTokens: number | null = null;
   let completionTokens: number | null = null;
+  let llmQuestions: ImprovementQuestion[] | undefined;
 
   if (DEEPSEEK_API_KEY && DEEPSEEK_API_KEY !== "your-deepseek-api-key-here") {
     try {
       const { result, usage } = await runLLMScreening(innovationData, frameworkData, DEEPSEEK_API_KEY);
       criteriaScores = result.criteria_scores;
+      llmQuestions = result.improvement_questions;
       rawResponse = JSON.stringify(result);
       screeningMethod = "llm";
       promptTokens = usage.promptTokens;
@@ -172,6 +176,13 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
   // as the review-gate basis, so RICE and Operational ideas are judged on one scale.
   const finalScore = computeQualityScore(criteriaScores, frameworkData.criteria);
 
+  // Socratic improvement questions: prefer the LLM's, else generate from the
+  // weakest criteria so the no-key path still coaches the author.
+  const questions: ImprovementQuestion[] =
+    llmQuestions && llmQuestions.length > 0
+      ? llmQuestions
+      : buildQuestions(criteriaScores, frameworkData.criteria);
+
   // Delete any prior screening rows for idempotency on re-screen
   await prisma.innovationScreening.deleteMany({ where: { innovationId } });
 
@@ -183,6 +194,7 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
       rawResponse,
       promptTokens,
       completionTokens,
+      improvementQuestions: JSON.stringify(questions),
       scores: {
         create: criteriaScores.map((cs) => {
           const criterion = framework.criteria.find((c) => c.name === cs.criterion);
@@ -224,7 +236,7 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
       data: {
         innovationId,
         action: "FEEDBACK_AUTO",
-        payload: JSON.stringify({ completeness, failReasons }),
+        payload: JSON.stringify({ completeness, failReasons, questions }),
         performedBy: "system",
       },
     });
@@ -281,5 +293,6 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
     screeningMethod,
     completeness,
     status: newStatus,
+    questions,
   };
 }

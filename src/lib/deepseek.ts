@@ -49,7 +49,10 @@ ${criteriaList}
 **Yêu cầu:**
 1. Với mỗi tiêu chí, cho điểm trong thang điểm quy định.
 2. Viết một đoạn reasoning (1-3 câu) giải thích lý do cho mức điểm đó.
-3. Trả về kết quả dưới dạng JSON sạch theo định dạng sau (chỉ trả về JSON, không kèm text khác):
+3. Đặt câu hỏi gợi mở ("improvement_questions"): với 3-5 tiêu chí ĐIỂM THẤP NHẤT, mỗi tiêu chí một câu hỏi mở giúp tác giả tự nhận ra điểm cần cải thiện và nâng điểm tiêu chí đó.
+   - QUAN TRỌNG: KHÔNG nêu trực tiếp lỗi của sáng kiến và KHÔNG đưa ra cách sửa cụ thể. Chỉ đặt câu hỏi mở (dạng "Bạn đã...?", "Có dữ liệu nào...?", "Làm thế nào để...?") để tác giả tự suy ngẫm.
+   - Mỗi câu hỏi gắn với một tiêu chí cụ thể (trường "criterion" trùng tên tiêu chí ở trên).
+4. Trả về kết quả dưới dạng JSON sạch theo định dạng sau (chỉ trả về JSON, không kèm text khác):
 
 {
   "proposal_id": "${innovation.code}",
@@ -57,10 +60,13 @@ ${criteriaList}
   "criteria_scores": [
     { "criterion": "Tên tiêu chí", "score": số, "reasoning": "Giải thích" }
   ],
-  "final_normalised_score": số_từ_0_đến_100
+  "final_normalised_score": số_từ_0_đến_100,
+  "improvement_questions": [
+    { "criterion": "Tên tiêu chí", "question": "Câu hỏi gợi mở bằng tiếng Việt" }
+  ]
 }
 
-Lưu ý: final_normalised_score phải nằm trong khoảng 0-100.`;
+Lưu ý: final_normalised_score phải nằm trong khoảng 0-100. improvement_questions là câu hỏi, KHÔNG phải lời nhận xét hay hướng dẫn sửa.`;
 }
 
 export async function runLLMScreening(
@@ -103,6 +109,15 @@ export async function runLLMScreening(
   try {
     const result: ScreeningResult = JSON.parse(content);
     result.final_normalised_score = Math.min(100, Math.max(0, result.final_normalised_score));
+    // Keep only well-formed { criterion, question } items.
+    if (Array.isArray(result.improvement_questions)) {
+      result.improvement_questions = result.improvement_questions
+        .filter((q) => q && typeof q.criterion === "string" && typeof q.question === "string" && q.question.trim())
+        .map((q) => ({ criterion: q.criterion.trim() || "Tổng quan", question: q.question.trim() }))
+        .slice(0, 6);
+    } else {
+      result.improvement_questions = undefined;
+    }
     return { result, usage };
   } catch {
     throw new Error("Failed to parse LLM JSON response");

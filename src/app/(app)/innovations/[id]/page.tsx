@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ArrowLeft, Brain, Star, Edit3, AlertTriangle } from "lucide-react";
 import { Discussion } from "@/components/innovations/discussion";
+import { ImprovementQuestions, parseQuestions } from "@/components/innovations/improvement-questions";
 import { useUser } from "@/lib/user-context";
 import { isPublicInnovationStatus } from "@/lib/business-policy";
 
@@ -29,6 +30,7 @@ import { isPublicInnovationStatus } from "@/lib/business-policy";
     screenings: {
       id: string;
       normalisedScore: number | null;
+      improvementQuestions: string | null;
       framework: { name: string };
       createdAt: string;
       scores: { score: number; reasoning: string | null; criterion: { name: string } }[];
@@ -226,6 +228,19 @@ export default function InnovationDetailPage() {
                 </div>
               )}
             </Card>
+
+            {(() => {
+              const questions = parseQuestions(latestScreening?.improvementQuestions);
+              if (questions.length === 0) return null;
+              return (
+                <Card>
+                  <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                    Câu hỏi gợi mở để hoàn thiện
+                  </h3>
+                  <ImprovementQuestions questions={questions} />
+                </Card>
+              );
+            })()}
 
             {data.reviews.length > 0 && (
               <Card>
