@@ -3,6 +3,7 @@ import { runLLMScreening } from "@/lib/deepseek";
 import { computeQualityScore } from "@/lib/scoring";
 import { createNotification } from "@/lib/notifications";
 import { SCREENING_PASS_THRESHOLD } from "@/lib/constants";
+import { getNumberSetting, SETTING_KEYS } from "@/lib/settings";
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
 
@@ -193,11 +194,18 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
   let newStatus: string;
   const failReasons: string[] = [];
 
+  // Admin-configurable pass threshold (SystemSetting), clamped to 0–100,
+  // falling back to the compiled-in default.
+  const threshold = Math.min(
+    100,
+    Math.max(0, await getNumberSetting(SETTING_KEYS.SCREENING_PASS_THRESHOLD, SCREENING_PASS_THRESHOLD))
+  );
+
   if (!completeness.complete) {
     failReasons.push(...completeness.missing);
   }
-  if (finalScore < SCREENING_PASS_THRESHOLD) {
-    failReasons.push(`Điểm chất lượng chưa đạt ngưỡng tối thiểu (${finalScore.toFixed(1)}/${SCREENING_PASS_THRESHOLD})`);
+  if (finalScore < threshold) {
+    failReasons.push(`Điểm chất lượng chưa đạt ngưỡng tối thiểu (${finalScore.toFixed(1)}/${threshold})`);
   }
 
   if (failReasons.length > 0) {
