@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getUserFromHeaders } from "@/lib/auth";
+import { isAdmin } from "@/lib/business-policy";
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +9,11 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    const user = await getUserFromHeaders();
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const framework = await prisma.framework.findUnique({
       where: { id },
       include: {
@@ -30,6 +37,11 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
+    const user = await getUserFromHeaders();
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { name, description, formula, isActive, criteria, blockMapping } = body;
 
@@ -71,6 +83,11 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
+    const user = await getUserFromHeaders();
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await prisma.framework.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {

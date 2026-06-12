@@ -31,7 +31,10 @@ export default function ReviewPage() {
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useUser();
-  const [selectedBlock, setSelectedBlock] = useState(user.blockCode);
+  const [selectedBlock, setSelectedBlock] = useState(user.role === "ADMIN" ? "ALL" : user.blockCode);
+  const selectableBlocks = user.role === "ADMIN"
+    ? BANK_BLOCKS
+    : BANK_BLOCKS.filter((block) => block.code === user.blockCode);
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
@@ -44,6 +47,11 @@ export default function ReviewPage() {
       .then(setReviews)
       .finally(() => setLoading(false));
   }, [user, selectedBlock]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedBlock(user.role === "ADMIN" ? "ALL" : user.blockCode);
+  }, [user.blockCode, user.role]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -86,10 +94,11 @@ export default function ReviewPage() {
             <select
               value={selectedBlock}
               onChange={(e) => setSelectedBlock(e.target.value)}
+              disabled={user.role !== "ADMIN"}
               className="bg-surface-alt border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand cursor-pointer"
             >
-              <option value="ALL">Tất cả khối</option>
-              {BANK_BLOCKS.map((b) => (
+              {user.role === "ADMIN" && <option value="ALL">Tất cả khối</option>}
+              {selectableBlocks.map((b) => (
                 <option key={b.code} value={b.code}>{b.code} - {b.name}</option>
               ))}
             </select>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromHeaders } from "@/lib/auth";
+import { PUBLIC_INNOVATION_STATUSES } from "@/lib/business-policy";
 
 export async function GET(request: NextRequest) {
   const user = await getUserFromHeaders();
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
   const sortBy = searchParams.get("sortBy") || "latest";
 
   try {
-    const where: Record<string, unknown> = { status: "PUBLISHED" };
+    const where: Record<string, unknown> = { status: { in: [...PUBLIC_INNOVATION_STATUSES] } };
     if (keyword) {
       where.OR = [
         { title: { contains: keyword } },

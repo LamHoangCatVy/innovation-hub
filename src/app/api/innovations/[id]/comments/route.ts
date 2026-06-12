@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromHeaders } from "@/lib/auth";
+import { canParticipateInHub } from "@/lib/business-policy";
 
 type CommentWithAuthor = {
   id: string;
@@ -28,6 +29,14 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    const innovation = await prisma.innovation.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!innovation || !canParticipateInHub(innovation.status)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const comments = await prisma.innovationComment.findMany({
       where: { innovationId: id },
       include: { author: { select: { fullName: true, role: true, block: { select: { code: true } } } } },
@@ -48,6 +57,13 @@ export async function POST(
     const user = await getUserFromHeaders();
     const body = await request.json().catch(() => ({}));
     const content = typeof body.content === "string" ? body.content.trim() : "";
+    const innovation = await prisma.innovation.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!innovation || !canParticipateInHub(innovation.status)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     if (!content) {
       return NextResponse.json({ error: "Nội dung không được để trống" }, { status: 400 });

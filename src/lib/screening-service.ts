@@ -116,10 +116,14 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
   const completeness = checkCompleteness(innovation);
 
   const mapping = await prisma.blockFrameworkMapping.findFirst({
-    where: { blockId: innovation.primaryBlockId! },
+    where: {
+      blockId: innovation.primaryBlockId!,
+      framework: { isActive: true },
+    },
     include: { framework: { include: { criteria: true } } },
+    orderBy: { createdAt: "asc" },
   });
-  if (!mapping) throw new Error("No active framework for this block");
+  if (!mapping) throw new Error("No active framework mapped for this block");
 
   const framework = mapping.framework;
   const innovationData = {

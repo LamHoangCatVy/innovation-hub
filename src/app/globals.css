@@ -52,7 +52,7 @@
 }
 
 @layer utilities {
-  .department-orbit-canvas canvas {
+  .cosmic-orbit-canvas canvas {
     width: 100% !important;
     height: 100% !important;
   }

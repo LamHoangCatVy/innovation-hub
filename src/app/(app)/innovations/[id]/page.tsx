@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ArrowLeft, Brain, Star, Edit3, AlertTriangle } from "lucide-react";
 import { Discussion } from "@/components/innovations/discussion";
 import { useUser } from "@/lib/user-context";
+import { isPublicInnovationStatus } from "@/lib/business-policy";
 
   interface InnovationDetail {
     id: string;
@@ -92,6 +93,7 @@ export default function InnovationDetailPage() {
   const canEdit =
     (data.status === "DRAFT" || data.status === "MODIFICATION_REQUESTED") &&
     (data.author.id === user.id || user.role === "ADMIN");
+  const canDiscuss = isPublicInnovationStatus(data.status);
 
   return (
     <>
@@ -246,9 +248,11 @@ export default function InnovationDetailPage() {
           </div>
         </div>
 
-        <Card>
-          <Discussion innovationId={data.id} />
-        </Card>
+        {canDiscuss && (
+          <Card>
+            <Discussion innovationId={data.id} />
+          </Card>
+        )}
       </div>
     </>
   );

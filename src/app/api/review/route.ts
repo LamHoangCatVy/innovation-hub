@@ -2,19 +2,24 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromHeaders } from "@/lib/auth";
 import { headers } from "next/headers";
+import { resolveReviewBlockScope } from "@/lib/business-policy";
 
 export async function GET() {
   try {
     const user = await getUserFromHeaders();
     const headersList = await headers();
-    const reviewBlock = headersList.get("x-vpb-review-block") || user.blockCode;
+    const scope = resolveReviewBlockScope(user, headersList.get("x-vpb-review-block"));
 
     const where: Record<string, unknown> = {};
-    if (reviewBlock !== "ALL") {
-      const block = await prisma.block.findUnique({ where: { code: reviewBlock } });
-      if (block) {
-        where.blockId = block.id;
+    if (scope.error) {
+      return NextResponse.json({ error: "Block not found" }, { status: 400 });
+    }
+    if (!scope.all) {
+      const block = await prisma.block.findUnique({ where: { code: scope.blockCode! } });
+      if (!block) {
+        return NextResponse.json({ error: "Invalid review block" }, { status: 400 });
       }
+      where.blockId = block.id;
     }
 
     const reviews = await prisma.review.findMany({

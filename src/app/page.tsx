@@ -153,7 +153,7 @@ export default async function LandingPage() {
             Mỗi sáng kiến là một bước tiến cho ngân hàng. Bắt đầu hành trình đổi mới của bạn ngay hôm nay.
           </p>
           <Link href="/innovations/new">
-            <Button size="lg" className="!bg-white !text-brand hover:!bg-white/90">
+            <Button size="lg" className="!bg-none !bg-white !text-brand !shadow-black/10 hover:!bg-white/90">
               <ArrowRight size={18} /> Gửi Sáng kiến đầu tiên
             </Button>
           </Link>

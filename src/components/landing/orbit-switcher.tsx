@@ -3,24 +3,19 @@
 import dynamic from "next/dynamic";
 
 const OrbitPlaceholder = () => (
-  <div className="relative h-[430px] overflow-hidden rounded-2xl border border-white/80 bg-white/70 shadow-2xl shadow-brand/10 sm:h-[520px] lg:h-[590px]">
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_44%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_72%_24%,rgba(14,165,233,0.16),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.9),rgba(240,253,250,0.75))]" />
+  <div className="cosmic-orbit-canvas relative h-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#05080f] shadow-2xl shadow-brand/20 sm:h-[520px] lg:h-[590px]">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(16,185,129,0.28),transparent_42%),radial-gradient(circle_at_74%_22%,rgba(56,189,248,0.22),transparent_40%),linear-gradient(160deg,#070b14,#05080f)]" />
     <div className="absolute inset-0 flex items-center justify-center">
-      <div className="h-28 w-28 rounded-full border border-emerald-200 bg-gradient-to-br from-brand to-brand-light shadow-2xl shadow-brand/25" />
+      <div className="h-28 w-28 rounded-full bg-gradient-to-br from-brand to-brand-light shadow-[0_0_70px_rgba(16,185,129,0.7)]" />
     </div>
   </div>
 );
 
-const DepartmentOrbit = dynamic(() => import("@/components/landing/department-orbit"), {
-  ssr: false,
-  loading: OrbitPlaceholder,
-});
-
-const SupernovaOrbit = dynamic(() => import("@/components/landing/supernova-orbit"), {
+const CosmicOrbit = dynamic(() => import("@/components/landing/cosmic-orbit"), {
   ssr: false,
   loading: OrbitPlaceholder,
 });
 
 export function OrbitSwitcher({ variant }: { variant: "department" | "supernova" }) {
-  return variant === "supernova" ? <SupernovaOrbit /> : <DepartmentOrbit />;
+  return <CosmicOrbit energetic={variant === "supernova"} />;
 }

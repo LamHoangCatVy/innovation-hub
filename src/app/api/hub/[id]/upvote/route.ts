@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserFromHeaders } from "@/lib/auth";
+import { canParticipateInHub } from "@/lib/business-policy";
 
 export async function POST(
   request: NextRequest,
@@ -9,6 +10,14 @@ export async function POST(
   const { id } = await params;
   const user = await getUserFromHeaders();
   try {
+    const innovation = await prisma.innovation.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!innovation || !canParticipateInHub(innovation.status)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const existing = await prisma.innovationUpvote.findUnique({
       where: { innovationId_userId: { innovationId: id, userId: user.userId } },
     });
