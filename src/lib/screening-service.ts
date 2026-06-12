@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { runLLMScreening } from "@/lib/deepseek";
-import { normaliseScores } from "@/lib/scoring";
+import { computeQualityScore } from "@/lib/scoring";
 import { createNotification } from "@/lib/notifications";
 import { SCREENING_PASS_THRESHOLD } from "@/lib/constants";
 
@@ -143,7 +143,6 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
   };
 
   let criteriaScores: CriterionResult[];
-  let finalScore: number;
   let screeningMethod: "llm" | "rule" = "rule";
   let rawResponse = "";
   let promptTokens: number | null = null;
@@ -153,19 +152,20 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
     try {
       const { result, usage } = await runLLMScreening(innovationData, frameworkData, DEEPSEEK_API_KEY);
       criteriaScores = result.criteria_scores;
-      finalScore = normaliseScores(criteriaScores, framework.name);
       rawResponse = JSON.stringify(result);
       screeningMethod = "llm";
       promptTokens = usage.promptTokens;
       completionTokens = usage.completionTokens;
     } catch {
       criteriaScores = ruleBasedScoring(innovation, frameworkData.criteria);
-      finalScore = normaliseScores(criteriaScores, framework.name);
     }
   } else {
     criteriaScores = ruleBasedScoring(innovation, frameworkData.criteria);
-    finalScore = normaliseScores(criteriaScores, framework.name);
   }
+
+  // Framework-agnostic quality score (0–100): used both as the headline score and
+  // as the review-gate basis, so RICE and Operational ideas are judged on one scale.
+  const finalScore = computeQualityScore(criteriaScores, frameworkData.criteria);
 
   // Delete any prior screening rows for idempotency on re-screen
   await prisma.innovationScreening.deleteMany({ where: { innovationId } });
@@ -197,7 +197,7 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
     failReasons.push(...completeness.missing);
   }
   if (finalScore < SCREENING_PASS_THRESHOLD) {
-    failReasons.push(`Điểm chưa đạt ngưỡng (${finalScore.toFixed(1)}/${SCREENING_PASS_THRESHOLD})`);
+    failReasons.push(`Điểm chất lượng chưa đạt ngưỡng tối thiểu (${finalScore.toFixed(1)}/${SCREENING_PASS_THRESHOLD})`);
   }
 
   if (failReasons.length > 0) {

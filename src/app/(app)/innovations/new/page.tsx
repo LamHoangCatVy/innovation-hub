@@ -424,9 +424,9 @@ function NewInnovationContent() {
                           ))}
                         </ul>
                       )}
-                      {screeningResult.finalScore < 40 && (
+                      {screeningResult.completeness.complete && (
                         <p className="text-sm text-amber-400/80 mt-2">
-                          Điểm AI ({screeningResult.finalScore}/100) chưa đạt ngưỡng tối thiểu. Hãy bổ sung thêm dẫn chứng, số liệu cụ thể để cải thiện điểm số.
+                          Điểm chất lượng AI ({screeningResult.finalScore}/100) chưa đạt ngưỡng tối thiểu. Hãy bổ sung thêm dẫn chứng, số liệu cụ thể để cải thiện điểm số.
                         </p>
                       )}
                     </div>
