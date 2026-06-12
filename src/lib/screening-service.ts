@@ -183,9 +183,7 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
       ? llmQuestions
       : buildQuestions(criteriaScores, frameworkData.criteria);
 
-  // Delete any prior screening rows for idempotency on re-screen
-  await prisma.innovationScreening.deleteMany({ where: { innovationId } });
-
+  // Append a new screening run (prior runs are kept as history).
   await prisma.innovationScreening.create({
     data: {
       innovationId,

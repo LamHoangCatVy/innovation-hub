@@ -24,7 +24,7 @@ export async function GET(
         primaryBlock: { select: { code: true, name: true } },
         classifications: { include: { block: { select: { code: true, name: true } } } },
         author: { select: { id: true, fullName: true, email: true } },
-        screenings: { include: { scores: { include: { criterion: true } }, framework: true } },
+        screenings: { include: { scores: { include: { criterion: true } }, framework: true }, orderBy: { createdAt: "desc" } },
         reviews: { include: { reviewer: { select: { fullName: true } }, block: { select: { code: true, name: true } } } },
         _count: { select: { upvotes: true, comments: true } },
         logs: { orderBy: { createdAt: "desc" }, take: 10 },

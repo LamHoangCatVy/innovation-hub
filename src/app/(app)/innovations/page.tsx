@@ -320,7 +320,7 @@ export default function MyIdeasPage() {
         </Card>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-surface">
-          <div className="hidden grid-cols-[1fr_130px_120px_120px_150px] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted md:grid">
+          <div className="hidden grid-cols-[1fr_130px_110px_110px_104px] gap-4 border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted md:grid">
             <span>Sáng kiến</span>
             <span>Khối</span>
             <span>Điểm</span>
@@ -329,7 +329,7 @@ export default function MyIdeasPage() {
           </div>
           <div className="divide-y divide-border">
             {visibleItems.map((item) => (
-              <div key={`${item.kind}-${item.id}`} className="grid gap-4 px-4 py-4 transition-colors hover:bg-surface-alt/60 md:grid-cols-[1fr_130px_120px_120px_150px] md:items-center">
+              <div key={`${item.kind}-${item.id}`} className="grid gap-4 px-4 py-4 transition-colors hover:bg-surface-alt/60 md:grid-cols-[1fr_130px_110px_110px_104px] md:items-center">
                 <div className="min-w-0">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span className="text-xs font-mono text-brand">{item.kind === "draft" ? "AUTO-SAVE" : item.code}</span>
@@ -365,38 +365,44 @@ export default function MyIdeasPage() {
 
                 <div className="hidden md:block">{statusBadge(item)}</div>
 
-                <div className="flex items-center justify-start gap-2 md:justify-end">
+                <div className="flex items-center justify-start gap-1 md:justify-end">
                   {item.kind === "draft" ? (
+                    confirmDelete === item.id ? (
+                      <>
+                        <Button variant="danger" size="sm" className="!px-2.5" onClick={() => deleteDraft(item.id)}>Xóa</Button>
+                        <Button variant="ghost" size="sm" className="!px-2.5" onClick={() => setConfirmDelete(null)}>Hủy</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Link href={`/innovations/new?draft=${item.id}`}>
+                          <Button variant="ghost" size="sm" className="!px-2" title="Sửa bản nháp" aria-label="Sửa bản nháp">
+                            <Edit3 size={15} />
+                          </Button>
+                        </Link>
+                        <Button variant="ghost" size="sm" className="!px-2 text-text-muted hover:text-red-500" onClick={() => setConfirmDelete(item.id)} title="Xóa bản nháp" aria-label="Xóa bản nháp">
+                          <Trash2 size={15} />
+                        </Button>
+                      </>
+                    )
+                  ) : item.status === "DRAFT" || item.status === "MODIFICATION_REQUESTED" ? (
                     <>
-                      <Link href={`/innovations/new?draft=${item.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Edit3 size={14} />
-                          Sửa
+                      {item.status === "MODIFICATION_REQUESTED" && (
+                        <Link href={`/innovations/${item.id}`}>
+                          <Button variant="ghost" size="sm" className="!px-2" title="Xem chi tiết" aria-label="Xem chi tiết">
+                            <Eye size={15} />
+                          </Button>
+                        </Link>
+                      )}
+                      <Link href={`/innovations/new?edit=${item.id}`}>
+                        <Button variant="outline" size="sm" className="!px-2" title={item.status === "DRAFT" ? "Tiếp tục" : "Sửa & gửi lại"} aria-label={item.status === "DRAFT" ? "Tiếp tục" : "Sửa & gửi lại"}>
+                          {item.status === "DRAFT" ? <Send size={15} /> : <Edit3 size={15} />}
                         </Button>
                       </Link>
-                      {confirmDelete === item.id ? (
-                        <>
-                          <Button variant="danger" size="sm" onClick={() => deleteDraft(item.id)}>Xóa</Button>
-                          <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Hủy</Button>
-                        </>
-                      ) : (
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(item.id)} aria-label="Xóa bản nháp">
-                          <Trash2 size={14} />
-                        </Button>
-                      )}
                     </>
-                  ) : item.status === "DRAFT" || item.status === "MODIFICATION_REQUESTED" ? (
-                    <Link href={`/innovations/new?edit=${item.id}`}>
-                      <Button variant="outline" size="sm" className="whitespace-nowrap">
-                        {item.status === "DRAFT" ? <Send size={14} /> : <Edit3 size={14} />}
-                        {item.status === "DRAFT" ? "Tiếp tục" : "Sửa & gửi lại"}
-                      </Button>
-                    </Link>
                   ) : (
                     <Link href={`/innovations/${item.id}`}>
-                      <Button variant="ghost" size="sm">
-                        <Eye size={14} />
-                        Xem
+                      <Button variant="ghost" size="sm" className="!px-2" title="Xem chi tiết" aria-label="Xem chi tiết">
+                        <Eye size={15} />
                       </Button>
                     </Link>
                   )}

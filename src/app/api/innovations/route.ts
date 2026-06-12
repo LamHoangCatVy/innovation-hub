@@ -99,9 +99,8 @@ export async function POST(request: NextRequest) {
       }
       const primaryUuid = primaryBlockId ? blockMap.get(primaryBlockId) : existing.primaryBlockId;
 
-      // Delete old classifications, screenings
+      // Reset classifications; keep prior screenings as history.
       await prisma.innovationBlock.deleteMany({ where: { innovationId: editId } });
-      await prisma.innovationScreening.deleteMany({ where: { innovationId: editId } });
 
       const isSubmit = status !== "DRAFT";
 

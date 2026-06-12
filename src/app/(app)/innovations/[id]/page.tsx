@@ -7,10 +7,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ArrowLeft, Brain, Star, Edit3, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Brain, Star, Edit3, AlertTriangle, History, RefreshCw } from "lucide-react";
 import { Discussion } from "@/components/innovations/discussion";
 import { ImprovementQuestions, parseQuestions } from "@/components/innovations/improvement-questions";
 import { useUser } from "@/lib/user-context";
+import { formatDate } from "@/lib/utils";
 import { isPublicInnovationStatus } from "@/lib/business-policy";
 
   interface InnovationDetail {
@@ -31,6 +32,7 @@ import { isPublicInnovationStatus } from "@/lib/business-policy";
       id: string;
       normalisedScore: number | null;
       improvementQuestions: string | null;
+      promptTokens: number | null;
       framework: { name: string };
       createdAt: string;
       scores: { score: number; reasoning: string | null; criterion: { name: string } }[];
@@ -88,13 +90,18 @@ export default function InnovationDetailPage() {
     COMPLETED: { label: "Hoàn tất", variant: "success" },
   };
 
-  const latestScreening = data.screenings?.[data.screenings.length - 1];
+  const sortedScreenings = data.screenings ?? []; // already newest-first from the API
+  const latestScreening = sortedScreenings[0];
+  const historyScreenings = sortedScreenings.slice(1);
   const statusInfo = statusMap[data.status] || statusMap.DRAFT;
   const feedbackLog = data.logs?.find((l) => l.action === "FEEDBACK_AUTO");
   const haveReviewFeedback = data.reviews?.some((r) => r.feedbackNotes);
+  const isOwnerOrAdmin = data.author.id === user.id || user.role === "ADMIN";
   const canEdit =
-    (data.status === "DRAFT" || data.status === "MODIFICATION_REQUESTED") &&
-    (data.author.id === user.id || user.role === "ADMIN");
+    (data.status === "DRAFT" || data.status === "MODIFICATION_REQUESTED") && isOwnerOrAdmin;
+  const canRescreen =
+    (data.status === "PENDING_SCREENING" || data.status === "MODIFICATION_REQUESTED") && isOwnerOrAdmin;
+  const latestQuestions = parseQuestions(latestScreening?.improvementQuestions);
   const canDiscuss = isPublicInnovationStatus(data.status);
 
   return (
@@ -155,13 +162,33 @@ export default function InnovationDetailPage() {
                 ))}
               </div>
             )}
-            {canEdit && (
-              <Link href={`/innovations/new?edit=${data.id}`}>
-                <Button size="sm">
-                  <Edit3 size={14} /> Sửa & gửi lại
+
+            {/* AI guiding questions — or a prompt to generate them if none yet */}
+            {latestQuestions.length > 0 ? (
+              <div className="mt-2 pt-3 border-t border-amber-500/20">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-400 mb-2">Câu hỏi gợi mở từ AI</p>
+                <ImprovementQuestions questions={latestQuestions} />
+              </div>
+            ) : canRescreen ? (
+              <div className="mt-2 pt-3 border-t border-amber-500/20 text-sm text-amber-400/90">
+                Chạy lại đánh giá AI để nhận các câu hỏi gợi mở giúp hoàn thiện sáng kiến.
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {canRescreen && (
+                <Button size="sm" variant="outline" onClick={triggerScreening} disabled={screening}>
+                  {screening ? <Spinner size={14} /> : <RefreshCw size={14} />} Chạy lại đánh giá AI
                 </Button>
-              </Link>
-            )}
+              )}
+              {canEdit && (
+                <Link href={`/innovations/new?edit=${data.id}`}>
+                  <Button size="sm">
+                    <Edit3 size={14} /> Sửa & gửi lại
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         )}
 
@@ -214,12 +241,17 @@ export default function InnovationDetailPage() {
                       <span className="text-xs font-medium text-text-primary">{s.score}</span>
                     </div>
                   ))}
+                  {canRescreen && (
+                    <Button size="sm" variant="outline" className="w-full mt-3" onClick={triggerScreening} disabled={screening}>
+                      {screening ? <Spinner size={14} /> : <RefreshCw size={14} />} Chạy lại đánh giá AI
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="text-center">
                   <Brain size={32} className="mx-auto text-text-muted mb-2" />
                   <p className="text-sm text-text-muted mb-3">Chưa có điểm AI</p>
-                  {data.status === "PENDING_SCREENING" && (
+                  {canRescreen && (
                     <Button size="sm" onClick={triggerScreening} disabled={screening}>
                       {screening ? <Spinner size={14} /> : <Star size={14} />}
                       Chạy AI chấm điểm
@@ -229,18 +261,42 @@ export default function InnovationDetailPage() {
               )}
             </Card>
 
-            {(() => {
-              const questions = parseQuestions(latestScreening?.improvementQuestions);
-              if (questions.length === 0) return null;
-              return (
-                <Card>
-                  <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
-                    Câu hỏi gợi mở để hoàn thiện
-                  </h3>
-                  <ImprovementQuestions questions={questions} />
-                </Card>
-              );
-            })()}
+            {latestQuestions.length > 0 && (
+              <Card>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                  Câu hỏi gợi mở để hoàn thiện
+                </h3>
+                <ImprovementQuestions questions={latestQuestions} />
+              </Card>
+            )}
+
+            {historyScreenings.length > 0 && (
+              <Card>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                  <History size={14} /> Lịch sử đánh giá AI ({historyScreenings.length})
+                </h3>
+                <div className="space-y-3">
+                  {historyScreenings.map((h) => {
+                    const hq = parseQuestions(h.improvementQuestions);
+                    const score = h.normalisedScore ?? 0;
+                    return (
+                      <div key={h.id} className="rounded-lg border border-border p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-bold ${score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-red-400"}`}>
+                              {h.normalisedScore?.toFixed(1) ?? "N/A"}
+                            </span>
+                            <Badge variant="info">{h.promptTokens ? "AI" : "Quy tắc"}</Badge>
+                          </div>
+                          <span className="text-xs text-text-muted">{formatDate(h.createdAt, "relative")}</span>
+                        </div>
+                        {hq.length > 0 && <ImprovementQuestions questions={hq} className="mt-3" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
 
             {data.reviews.length > 0 && (
               <Card>
