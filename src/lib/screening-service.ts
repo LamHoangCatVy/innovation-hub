@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/db";
-import { runLLMScreening } from "@/lib/deepseek";
+import { runLLMScreening, runSimilarityCheck } from "@/lib/deepseek";
 import { computeQualityScore, type ImprovementQuestion } from "@/lib/scoring";
 import { buildQuestions } from "@/lib/screening-questions";
+import {
+  prefilterCandidates,
+  lexicalMatches,
+  type CandidateIdea,
+  type SimilarInnovation,
+} from "@/lib/similarity";
 import { createNotification } from "@/lib/notifications";
 import { SCREENING_PASS_THRESHOLD } from "@/lib/constants";
 import { getNumberSetting, SETTING_KEYS } from "@/lib/settings";
@@ -103,6 +109,68 @@ interface ScreeningOutput {
   questions: ImprovementQuestion[];
 }
 
+/**
+ * Advisory similarity check: find existing/in-flight ideas similar to the new one.
+ * Lexically prefilters the corpus, then uses the LLM (or a lexical fallback) to rank.
+ * Returns [] on any failure — must never break screening or affect routing.
+ */
+async function findSimilarInnovations(
+  innovationId: string,
+  newIdea: { title: string; executiveSummary: string; painPoints: string }
+): Promise<SimilarInnovation[]> {
+  try {
+    const rows = await prisma.innovation.findMany({
+      where: {
+        id: { not: innovationId },
+        status: { in: ["PUBLISHED", "COMPLETED", "IN_REVIEW", "APPROVED"] },
+      },
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        executiveSummary: true,
+        painPoints: true,
+        primaryBlock: { select: { name: true } },
+      },
+      take: 300,
+    });
+
+    const candidates: CandidateIdea[] = rows.map((c) => ({
+      id: c.id,
+      code: c.code,
+      title: c.title,
+      executiveSummary: c.executiveSummary,
+      painPoints: c.painPoints,
+      blockName: c.primaryBlock?.name ?? "",
+    }));
+
+    const ranked = prefilterCandidates(newIdea, candidates, 8);
+    if (ranked.length === 0) return [];
+
+    if (DEEPSEEK_API_KEY && DEEPSEEK_API_KEY !== "your-deepseek-api-key-here") {
+      const verdicts = await runSimilarityCheck(
+        { title: newIdea.title, summary: newIdea.executiveSummary },
+        ranked.map((c) => ({ code: c.code, title: c.title, summary: c.executiveSummary })),
+        DEEPSEEK_API_KEY
+      );
+      const byCode = new Map(ranked.map((c) => [c.code, c]));
+      return verdicts
+        .filter((v) => v.similarity >= 60 && byCode.has(v.code))
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 5)
+        .map((v) => {
+          const c = byCode.get(v.code)!;
+          return { id: c.id, code: c.code, title: c.title, blockName: c.blockName, similarity: v.similarity, reason: v.reason };
+        });
+    }
+
+    return lexicalMatches(newIdea, ranked);
+  } catch (err) {
+    console.error("Similarity check failed:", err);
+    return [];
+  }
+}
+
 export async function autoScreenInnovation(innovationId: string): Promise<ScreeningOutput> {
   const innovation = await prisma.innovation.findUnique({
     where: { id: innovationId },
@@ -183,6 +251,10 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
       ? llmQuestions
       : buildQuestions(criteriaScores, frameworkData.criteria);
 
+  // Advisory similarity check against existing/in-flight ideas. Never affects
+  // scoring or routing; wrapped so any failure can't break screening.
+  const similar = await findSimilarInnovations(innovationId, innovationData);
+
   // Append a new screening run (prior runs are kept as history).
   await prisma.innovationScreening.create({
     data: {
@@ -193,6 +265,7 @@ export async function autoScreenInnovation(innovationId: string): Promise<Screen
       promptTokens,
       completionTokens,
       improvementQuestions: JSON.stringify(questions),
+      similarInnovations: JSON.stringify(similar),
       scores: {
         create: criteriaScores.map((cs) => {
           const criterion = framework.criteria.find((c) => c.name === cs.criterion);

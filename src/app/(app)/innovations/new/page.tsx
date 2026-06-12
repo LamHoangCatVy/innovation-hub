@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ChevronRight, ChevronLeft, Send, Save, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { BANK_BLOCKS } from "@/lib/constants";
 import { ImprovementQuestions, parseQuestions, type ImprovementQuestion } from "@/components/innovations/improvement-questions";
+import { SimilarInnovations, parseSimilar, type SimilarInnovation } from "@/components/innovations/similar-innovations";
 
 const STEPS = [
   { id: 1, label: "Nhập thông tin" },
@@ -44,7 +45,7 @@ interface InnovationDetailResponse {
   primaryBlock?: { code: string } | null;
   classifications?: { block: { code: string } }[];
   logs?: InnovationLog[];
-  screenings?: { normalisedScore: number | null; promptTokens: number | null; improvementQuestions?: string | null }[];
+  screenings?: { normalisedScore: number | null; promptTokens: number | null; improvementQuestions?: string | null; similarInnovations?: string | null }[];
 }
 
 interface DraftResponse {
@@ -84,6 +85,7 @@ function NewInnovationContent() {
     completeness: { complete: boolean; missing: string[] };
     status: string;
     questions: ImprovementQuestion[];
+    similar: SimilarInnovation[];
   } | null>(null);
   const [innovationId, setInnovationId] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
@@ -216,6 +218,7 @@ function NewInnovationContent() {
               completeness,
               status: (data as InnovationDetailResponse).status || "DRAFT",
               questions: parseQuestions(screening?.improvementQuestions),
+              similar: parseSimilar(screening?.similarInnovations),
             });
           }
         }
@@ -448,6 +451,13 @@ function NewInnovationContent() {
                     <div className="p-5 rounded-xl bg-surface-alt border border-border">
                       <h3 className="font-semibold text-text-primary mb-1">Câu hỏi gợi mở để hoàn thiện</h3>
                       <ImprovementQuestions questions={screeningResult.questions} className="mt-3" />
+                    </div>
+                  )}
+
+                  {screeningResult.similar.length > 0 && (
+                    <div className="p-5 rounded-xl bg-surface-alt border border-border">
+                      <h3 className="font-semibold text-text-primary mb-1">Sáng kiến tương tự</h3>
+                      <SimilarInnovations items={screeningResult.similar} className="mt-3" />
                     </div>
                   )}
 

@@ -185,6 +185,7 @@ model InnovationScreening {
   rawResponse     String?
   normalisedScore Float?
   improvementQuestions String?
+  similarInnovations String?
   screenedAt      DateTime @default(now())
   createdAt       DateTime @default(now())
 

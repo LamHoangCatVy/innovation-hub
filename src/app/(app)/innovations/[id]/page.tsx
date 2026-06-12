@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ArrowLeft, Brain, Star, Edit3, AlertTriangle, History, RefreshCw } from "lucide-react";
 import { Discussion } from "@/components/innovations/discussion";
 import { ImprovementQuestions, parseQuestions } from "@/components/innovations/improvement-questions";
+import { SimilarInnovations, parseSimilar } from "@/components/innovations/similar-innovations";
 import { useUser } from "@/lib/user-context";
 import { formatDate } from "@/lib/utils";
 import { isPublicInnovationStatus } from "@/lib/business-policy";
@@ -32,6 +33,7 @@ import { isPublicInnovationStatus } from "@/lib/business-policy";
       id: string;
       normalisedScore: number | null;
       improvementQuestions: string | null;
+      similarInnovations: string | null;
       promptTokens: number | null;
       framework: { name: string };
       createdAt: string;
@@ -102,6 +104,7 @@ export default function InnovationDetailPage() {
   const canRescreen =
     (data.status === "PENDING_SCREENING" || data.status === "MODIFICATION_REQUESTED") && isOwnerOrAdmin;
   const latestQuestions = parseQuestions(latestScreening?.improvementQuestions);
+  const latestSimilar = parseSimilar(latestScreening?.similarInnovations);
   const canDiscuss = isPublicInnovationStatus(data.status);
 
   return (
@@ -267,6 +270,15 @@ export default function InnovationDetailPage() {
                   Câu hỏi gợi mở để hoàn thiện
                 </h3>
                 <ImprovementQuestions questions={latestQuestions} />
+              </Card>
+            )}
+
+            {latestSimilar.length > 0 && (
+              <Card>
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                  Sáng kiến tương tự
+                </h3>
+                <SimilarInnovations items={latestSimilar} />
               </Card>
             )}
 

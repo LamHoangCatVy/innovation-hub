@@ -123,3 +123,80 @@ export async function runLLMScreening(
     throw new Error("Failed to parse LLM JSON response");
   }
 }
+
+export interface SimilarityCandidate {
+  code: string;
+  title: string;
+  summary: string;
+}
+
+export interface SimilarityVerdict {
+  code: string;
+  similarity: number; // 0–100
+  reason: string;
+}
+
+/**
+ * Ask the LLM which existing ideas are genuinely similar to the new one.
+ * Returns only related candidates with a 0–100 similarity + a one-line Vietnamese reason.
+ */
+export async function runSimilarityCheck(
+  newIdea: { title: string; summary: string },
+  candidates: SimilarityCandidate[],
+  apiKey: string
+): Promise<SimilarityVerdict[]> {
+  if (candidates.length === 0) return [];
+
+  const list = candidates
+    .map((c, i) => `${i + 1}. [${c.code}] ${c.title} — ${c.summary}`)
+    .join("\n");
+
+  const prompt = `Bạn là chuyên gia rà soát trùng lặp sáng kiến của ngân hàng. So sánh SÁNG KIẾN MỚI với DANH SÁCH SÁNG KIẾN ĐÃ CÓ và chỉ ra những sáng kiến THỰC SỰ tương tự (cùng vấn đề/giải pháp), không chỉ trùng từ khóa.
+
+**SÁNG KIẾN MỚI:**
+- Tiêu đề: ${newIdea.title}
+- Tóm tắt: ${newIdea.summary}
+
+**DANH SÁCH SÁNG KIẾN ĐÃ CÓ:**
+${list}
+
+Chỉ trả về JSON sạch (không kèm text khác) theo định dạng. Chỉ liệt kê sáng kiến có mức tương đồng đáng kể (similarity >= 50); nếu không có, trả mảng rỗng:
+{
+  "matches": [
+    { "code": "Mã sáng kiến đã có", "similarity": số_0_đến_100, "reason": "Lý do tương đồng ngắn gọn bằng tiếng Việt" }
+  ]
+}`;
+
+  const response = await fetch(DEEPSEEK_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "deepseek-v4-pro",
+      messages: [
+        { role: "system", content: "Bạn là chuyên gia rà soát trùng lặp. Chỉ trả về JSON hợp lệ." },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) throw new Error(`DeepSeek similarity error: ${response.status}`);
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) return [];
+
+  const parsed = JSON.parse(content);
+  const matches = Array.isArray(parsed?.matches) ? parsed.matches : [];
+  return matches
+    .filter((m: unknown): m is SimilarityVerdict => {
+      const v = m as Record<string, unknown>;
+      return v && typeof v.code === "string" && typeof v.similarity === "number" && typeof v.reason === "string";
+    })
+    .map((m: SimilarityVerdict) => ({
+      code: m.code,
+      similarity: Math.min(100, Math.max(0, Math.round(m.similarity))),
+      reason: String(m.reason).trim(),
+    }));
+}
